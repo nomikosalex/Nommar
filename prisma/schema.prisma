@@ -1,0 +1,116 @@
+// Nommar booking system — data model
+// SQLite for development; switch `provider` to "postgresql" for production.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Service {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique
+  name        String
+  category    String
+  durationMin Int
+  priceCents  Int?
+  description String
+  imageUrl    String?
+  active      Boolean   @default(true)
+  staff       Staff[]
+  bookings    Booking[]
+}
+
+model Staff {
+  id           Int            @id @default(autoincrement())
+  name         String
+  active       Boolean        @default(true)
+  services     Service[]
+  workingHours WorkingHours[]
+  timeOff      TimeOff[]
+  bookings     Booking[]
+}
+
+// Treatment rooms. `categories` is a comma-separated list of service categories
+// the room can host (e.g. "Head Spa,Facial Treatments,Body Treatments").
+model Room {
+  id         Int       @id @default(autoincrement())
+  name       String
+  active     Boolean   @default(true)
+  categories String
+  bookings   Booking[]
+}
+
+// A booking request / cart. Groups one or more appointments (Booking rows),
+// across 1–2 guests, sharing one customer + status.
+model Reservation {
+  id            Int       @id @default(autoincrement())
+  status        String    @default("PENDING") // PENDING | CONFIRMED | CANCELLED
+  customerName  String
+  customerEmail String
+  customerPhone String
+  guestCount    Int       @default(1)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  bookings      Booking[]
+}
+
+// Recurring weekly availability for a staff member.
+// weekday: 0=Sunday .. 6=Saturday. start/end in minutes from local midnight.
+model WorkingHours {
+  id       Int   @id @default(autoincrement())
+  staff    Staff @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId  Int
+  weekday  Int
+  startMin Int
+  endMin   Int
+
+  @@index([staffId, weekday])
+}
+
+// One-off blocks. staffId null = whole spa closed for the range.
+model TimeOff {
+  id       Int      @id @default(autoincrement())
+  staff    Staff?   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staffId  Int?
+  startsAt DateTime
+  endsAt   DateTime
+  reason   String?
+
+  @@index([staffId])
+}
+
+// One appointment: a single service for one guest, in one room, with one
+// therapist, at one time. Belongs to a Reservation.
+model Booking {
+  id            Int         @id @default(autoincrement())
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  reservationId Int
+  service       Service     @relation(fields: [serviceId], references: [id])
+  serviceId     Int
+  staff         Staff       @relation(fields: [staffId], references: [id])
+  staffId       Int
+  room          Room        @relation(fields: [roomId], references: [id])
+  roomId        Int
+  guestIndex    Int         @default(1) // 1 = primary, 2 = second guest
+  guestName     String? // second guest's first name (primary uses reservation.customerName)
+  sequenceIndex Int         @default(0) // order within this guest's chain
+  startsAt      DateTime
+  endsAt        DateTime
+  priceCents    Int? // snapshot at booking time (null until prices are set)
+  discountPct   Int         @default(0)
+
+  @@index([staffId, startsAt])
+  @@index([roomId, startsAt])
+  @@index([reservationId])
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
