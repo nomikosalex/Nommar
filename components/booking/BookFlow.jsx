@@ -6,7 +6,7 @@ import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
 import { PACKAGES, slugify } from '@/lib/data';
-import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS } from '@/lib/booking.config';
+import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo } from '@/lib/booking.config';
 
 const CATEGORY_ORDER = ['Head Spa', 'Massage', 'Body Treatments', 'Facial Treatments'];
 
@@ -31,7 +31,7 @@ const inputStyle = "font-family:var(--font-jost),sans-serif;font-weight:300;font
 const labelStyle = "font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.22em;text-transform:uppercase;color:#C2A56B;margin-bottom:8px;display:block;";
 
 export default function BookFlow() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const params = useSearchParams();
   const preselect = params.get('service');
 
@@ -51,6 +51,15 @@ export default function BookFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
+  const [promo, setPromo] = useState(''); // code the customer typed
+  const [promoPct, setPromoPct] = useState(0); // 0 until a valid code is applied
+  const [promoMsg, setPromoMsg] = useState(''); // '', 'ok', or 'bad'
+
+  const applyPromo = () => {
+    const pct = validatePromo(promo);
+    setPromoPct(pct);
+    setPromoMsg(pct > 0 ? 'ok' : 'bad');
+  };
 
   const STEPS = [t.stepGuests, t.stepServices, t.stepWhen, t.stepDetails, t.stepReview];
 
@@ -144,8 +153,9 @@ export default function BookFlow() {
     setSubmitting(true);
     setError('');
     try {
-      const body = { start: iso, guests: guestsPayload(), customer: primary, notes };
+      const body = { start: iso, guests: guestsPayload(), customer: primary, notes, locale: lang };
       if (guestCount === 2) body.guest2 = g2;
+      if (promoPct > 0) body.promoCode = promo.trim().toUpperCase();
       const r = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const d = await r.json();
       if (!r.ok) {
@@ -168,7 +178,8 @@ export default function BookFlow() {
           </div>
           <h2 style={css(heading + 'font-size:26px;margin:0 0 14px;')}>{t.thankYou}, {primary.name.split(' ')[0]}</h2>
           <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:20px;line-height:1.55;color:#6E5E50;margin:0 auto 8px;max-width:38ch;")}>{t.confirmationMsg}</p>
-          <p style={css("font-family:var(--font-jost),sans-serif;font-size:13px;color:#8A7965;margin:18px 0 28px;")}>{t.emailOnWay}</p>
+          <p style={css("font-family:var(--font-jost),sans-serif;font-size:13px;color:#8A7965;margin:18px 0 14px;")}>{t.emailOnWay}</p>
+          <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:17px;color:#6E5E50;margin:0 auto 28px;max-width:34ch;")}>{t.arriveEarly}</p>
           <FX as={Link} href="/" style={primaryBtn + 'display:inline-block;text-decoration:none;'} hover="transform:translateY(-2px);">{t.backHome}</FX>
         </div>
       </Shell>
@@ -288,6 +299,29 @@ export default function BookFlow() {
               <p style={css("font-family:var(--font-jost),sans-serif;font-size:14px;color:#8A7965;margin:0 0 22px;")}>{fmtDate(date)} · {time}</p>
               <div style={css('margin-bottom:8px;font-family:var(--font-jost),sans-serif;font-size:14px;color:#3D2F25;line-height:1.7;')}>
                 {primary.name} · {primary.email} · {primary.phone}
+              </div>
+
+              {/* Promo code */}
+              {PROMO.active && (
+                <div style={css('margin:22px 0 6px;max-width:360px;')}>
+                  <label style={css(labelStyle)}>{t.promoLabel}</label>
+                  <div style={css('display:flex;gap:8px;')}>
+                    <input
+                      value={promo}
+                      onChange={(e) => { setPromo(e.target.value); setPromoMsg(''); setPromoPct(0); }}
+                      placeholder={t.promoPlaceholder}
+                      style={css(inputStyle + 'text-transform:uppercase;letter-spacing:0.1em;')}
+                    />
+                    <FX as="button" type="button" onClick={applyPromo} style={ghostBtn + 'white-space:nowrap;'} hover="border-color:#C2A56B;">{t.promoApply}</FX>
+                  </div>
+                  {promoMsg === 'ok' && <p style={css('font-family:var(--font-jost),sans-serif;font-size:13px;color:#3E7C58;margin:8px 0 0;')}>✓ {t.promoApplied.replace('{pct}', String(promoPct))}</p>}
+                  {promoMsg === 'bad' && <p style={css('font-family:var(--font-jost),sans-serif;font-size:13px;color:#9B4444;margin:8px 0 0;')}>{t.promoInvalid}</p>}
+                </div>
+              )}
+
+              {/* Arrive-early notice */}
+              <div style={css('margin-top:22px;background:#FAF5EC;border:1px solid #E6CF95;border-radius:2px;padding:12px 16px;font-family:var(--font-cormorant),serif;font-style:italic;font-size:16px;color:#6E5E50;')}>
+                {t.arriveEarly}
               </div>
             </div>
           )}

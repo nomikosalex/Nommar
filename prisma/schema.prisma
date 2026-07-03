@@ -54,6 +54,11 @@ model Reservation {
   customerPhone String
   guestCount    Int       @default(1)
   notes         String?
+  token         String    @unique @default(uuid(4)) // public self-service link id (verify + cancel)
+  emailVerified Boolean   @default(false)
+  promoCode     String?   // applied sale code, e.g. NOMMAR10
+  locale        String    @default("en") // guest's language for emails: en | gr
+  reminded24    Boolean   @default(false) // guard so the 24h reminder fires once
   createdAt     DateTime  @default(now())
   bookings      Booking[]
 }

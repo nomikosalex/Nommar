@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createReservationForRequest } from '@/lib/availability';
-import { sendReservationEmails } from '@/lib/bookingEmails';
+import { sendNewBookingEmails } from '@/lib/bookingEmails';
 import { rateLimit, clientIp } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +23,8 @@ const Body = z.object({
     })
     .optional(),
   notes: z.string().trim().max(1000).optional(),
+  promoCode: z.string().trim().max(40).optional(),
+  locale: z.enum(['en', 'gr']).optional(),
 });
 
 const STATUS: Record<string, number> = { invalid: 400, notfound: 404, past: 409, unavailable: 409 };
@@ -48,6 +50,8 @@ export async function POST(request: Request) {
     customer: d.customer,
     guest2: d.guest2,
     notes: d.notes,
+    promoCode: d.promoCode,
+    locale: d.locale,
   });
 
   if (!result.ok) {
@@ -59,7 +63,7 @@ export async function POST(request: Request) {
     where: { id: result.reservationId },
     include: { bookings: { include: { service: true, staff: true, room: true } } },
   });
-  if (reservation) sendReservationEmails(reservation).catch(() => {});
+  if (reservation) sendNewBookingEmails(reservation).catch(() => {});
 
   return NextResponse.json({ ok: true, reservationId: result.reservationId }, { status: 201 });
 }

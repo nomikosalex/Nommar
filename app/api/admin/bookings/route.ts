@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
+import { sendConfirmedEmail } from '@/lib/bookingEmails';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,18 @@ export async function PATCH(request: Request) {
   if (!id || !['CONFIRMED', 'CANCELLED', 'PENDING'].includes(status)) {
     return NextResponse.json({ error: 'id and a valid status are required' }, { status: 400 });
   }
+
+  const prev = await prisma.reservation.findUnique({ where: { id: Number(id) }, select: { status: true } });
   const reservation = await prisma.reservation.update({ where: { id: Number(id) }, data: { status } });
+
+  // Send the guest a confirmation email on the PENDING/CANCELLED → CONFIRMED transition only.
+  if (status === 'CONFIRMED' && prev?.status !== 'CONFIRMED') {
+    const full = await prisma.reservation.findUnique({
+      where: { id: reservation.id },
+      include: { bookings: { include: { service: true, staff: true, room: true } } },
+    });
+    if (full) sendConfirmedEmail(full).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true, reservation });
 }

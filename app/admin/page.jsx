@@ -91,6 +91,9 @@ function Card({ r, onStatus, muted }) {
           <span style={css('color:#8A7965;font-weight:300;')}> · {r.guestCount === 2 ? '2 guests' : '1 guest'}</span>
         </div>
         <div style={css('display:flex;align-items:center;gap:10px;')}>
+          {r.emailVerified === false && r.status !== 'CANCELLED' && (
+            <span title="Guest has not confirmed their email" style={css('font-family:var(--font-jost),sans-serif;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:5px 10px;border-radius:2px;background:#FBF0DC;color:#9A7B33;border:1px solid #E6CF95;')}>Email unverified</span>
+          )}
           <span style={css('font-family:var(--font-jost),sans-serif;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:5px 11px;border-radius:2px;' + (STATUS_STYLE[r.status] || ''))}>{r.status}</span>
           {r.status !== 'CONFIRMED' && <FX as="button" onClick={() => onStatus(r.id, 'CONFIRMED')} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#3D2F25;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:8px 14px;cursor:pointer;border-radius:1px;" hover="transform:translateY(-1px);">Confirm</FX>}
           {r.status !== 'CANCELLED' && <FX as="button" onClick={() => onStatus(r.id, 'CANCELLED')} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#9B4444;background:none;border:1px solid rgba(155,68,68,0.4);padding:8px 14px;cursor:pointer;border-radius:1px;" hover="border-color:#9B4444;">Cancel</FX>}
@@ -109,7 +112,7 @@ function Card({ r, onStatus, muted }) {
         ))}
       </div>
       <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;color:#8A7965;margin-top:12px;")}>
-        {r.customerEmail} · {r.customerPhone}{r.notes ? ` · “${r.notes}”` : ''}
+        {r.customerEmail} · {r.customerPhone}{r.promoCode ? ` · promo ${r.promoCode}` : ''}{r.notes ? ` · “${r.notes}”` : ''}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { prisma } from './prisma';
 import { packageBySlug } from './data';
-import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, ceilToGrid } from './booking.config';
+import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validatePromo, ceilToGrid } from './booking.config';
 
 export const TZ = process.env.NEXT_PUBLIC_TZ || 'Europe/Athens';
 
@@ -202,6 +202,8 @@ export async function createReservationForRequest(input: {
   customer: { name: string; email: string; phone: string };
   guest2?: { name?: string; email?: string; phone?: string };
   notes?: string;
+  promoCode?: string;
+  locale?: string;
 }) {
   const startUtc = new Date(input.start);
   if (Number.isNaN(startUtc.getTime())) return { ok: false as const, code: 'unavailable' as const };
@@ -225,8 +227,19 @@ export async function createReservationForRequest(input: {
     const assignment = solve(allSegs, ctx);
     if (!assignment) return { ok: false as const, code: 'unavailable' as const };
 
+    // Only persist a promo code that actually validates (store the canonical code).
+    const promoValid = validatePromo(input.promoCode) > 0;
     const reservation = await tx.reservation.create({
-      data: { status: 'PENDING', customerName: input.customer.name, customerEmail: input.customer.email, customerPhone: input.customer.phone, guestCount: input.guests.length, notes: input.notes || null },
+      data: {
+        status: 'PENDING',
+        customerName: input.customer.name,
+        customerEmail: input.customer.email,
+        customerPhone: input.customer.phone,
+        guestCount: input.guests.length,
+        notes: input.notes || null,
+        promoCode: promoValid ? PROMO.code : null,
+        locale: input.locale === 'gr' ? 'gr' : 'en',
+      },
     });
 
     // discount: 10% on the 2nd+ à-la-carte service per guest (package components excluded)
