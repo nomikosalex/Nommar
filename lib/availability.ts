@@ -43,7 +43,7 @@ async function loadContext(dateStr: string) {
       where: { active: true },
       select: { id: true, name: true, services: { select: { slug: true } }, workingHours: { where: { weekday }, select: { startMin: true, endMin: true } } },
     }),
-    prisma.room.findMany({ where: { active: true }, select: { id: true, name: true, categories: true } }),
+    prisma.room.findMany({ where: { active: true }, select: { id: true, name: true, categories: true, capacity: true } }),
     prisma.booking.findMany({
       where: { startsAt: { lt: dayEnd }, endsAt: { gt: dayStart }, reservation: { status: { not: 'CANCELLED' } } },
       select: { staffId: true, roomId: true, startsAt: true, endsAt: true },
@@ -58,7 +58,7 @@ async function loadContext(dateStr: string) {
     slugs: new Set(s.services.map((x) => x.slug)),
     hours: s.workingHours,
   }));
-  const rooms = roomsRaw.map((r) => ({ id: r.id, name: r.name, categories: new Set(r.categories.split(',')) }));
+  const rooms = roomsRaw.map((r) => ({ id: r.id, name: r.name, categories: new Set(r.categories.split(',')), capacity: r.capacity }));
 
   return { weekday, dayStart, dayEnd, serviceBySlug, staffList, rooms, bookings, timeOff };
 }
@@ -119,36 +119,51 @@ function staffCanWork(st: Ctx['staffList'][number], seg: Segment, ctx: Ctx): boo
   }
   return true;
 }
-function roomCanHost(room: Ctx['rooms'][number], seg: Segment, ctx: Ctx): boolean {
-  if (!room.categories.has(seg.category)) return false;
+// A room can HOST a segment if it allows the category. Whether it has a free bed
+// (capacity) at that time is checked separately in solve() against existing
+// bookings + the in-progress assignment.
+function roomCanHost(room: Ctx['rooms'][number], seg: Segment): boolean {
+  return room.categories.has(seg.category);
+}
+// How many beds of this room are already taken during the segment by EXISTING bookings.
+function roomBusyExisting(room: Ctx['rooms'][number], seg: Segment, ctx: Ctx): number {
+  let n = 0;
   for (const b of ctx.bookings) {
-    if (b.roomId === room.id && overlapsD(seg.utcStart, seg.utcEnd, b.startsAt, b.endsAt)) return false;
+    if (b.roomId === room.id && overlapsD(seg.utcStart, seg.utcEnd, b.startsAt, b.endsAt)) n++;
   }
-  return true;
+  return n;
 }
 
 type Assigned = { seg: Segment; staffId: number; roomId: number };
 
 // Try to assign (staff, room) to every segment. Prefers keeping one therapist per
 // guest (continuity); switches only when forced. Returns assignment or null.
-function solve(segments: Segment[], ctx: Ctx): Assigned[] | null {
+export function solve(segments: Segment[], ctx: Ctx): Assigned[] | null {
   const ordered = [...segments].sort((a, b) => a.startMin - b.startMin || a.guestIndex - b.guestIndex);
   const assigned: Assigned[] = [];
   const guestTherapist = new Map<number, number>(); // guestIndex -> staffId used so far
 
-  const free = (id: number, key: 'staffId' | 'roomId', seg: Segment) =>
-    !assigned.some((a) => a[key] === id && overlaps(seg.startMin, seg.endMin, a.seg.startMin, a.seg.endMin));
+  // A therapist is exclusive (one treatment at a time).
+  const staffFree = (id: number, seg: Segment) =>
+    !assigned.some((a) => a.staffId === id && overlaps(seg.startMin, seg.endMin, a.seg.startMin, a.seg.endMin));
+  // Beds already taken in a room during this segment by the in-progress assignment.
+  const roomAssignedCount = (roomId: number, seg: Segment) =>
+    assigned.filter((a) => a.roomId === roomId && overlaps(seg.startMin, seg.endMin, a.seg.startMin, a.seg.endMin)).length;
 
   function place(i: number): boolean {
     if (i === ordered.length) return true;
     const seg = ordered[i];
 
-    const eligibleStaff = ctx.staffList.filter((s) => staffCanWork(s, seg, ctx) && free(s.id, 'staffId', seg));
+    const eligibleStaff = ctx.staffList.filter((s) => staffCanWork(s, seg, ctx) && staffFree(s.id, seg));
     // Continuity: try this guest's existing therapist first.
     const preferred = guestTherapist.get(seg.guestIndex);
     eligibleStaff.sort((a, b) => (b.id === preferred ? 1 : 0) - (a.id === preferred ? 1 : 0));
 
-    const eligibleRooms = ctx.rooms.filter((r) => roomCanHost(r, seg, ctx) && free(r.id, 'roomId', seg));
+    // A room is usable while its used beds (existing bookings + in-progress
+    // assignment) stay below its capacity.
+    const eligibleRooms = ctx.rooms.filter(
+      (r) => roomCanHost(r, seg) && roomBusyExisting(r, seg, ctx) + roomAssignedCount(r.id, seg) < r.capacity,
+    );
 
     for (const st of eligibleStaff) {
       const hadTherapist = guestTherapist.has(seg.guestIndex);
@@ -280,7 +295,7 @@ async function loadContextTx(tx: Parameters<Parameters<typeof prisma.$transactio
   const [servicesRaw, staff, roomsRaw, bookings, timeOff] = await Promise.all([
     tx.service.findMany({ where: { active: true }, select: { id: true, slug: true, name: true, category: true, durationMin: true, priceCents: true } }),
     tx.staff.findMany({ where: { active: true }, select: { id: true, name: true, services: { select: { slug: true } }, workingHours: { where: { weekday }, select: { startMin: true, endMin: true } } } }),
-    tx.room.findMany({ where: { active: true }, select: { id: true, name: true, categories: true } }),
+    tx.room.findMany({ where: { active: true }, select: { id: true, name: true, categories: true, capacity: true } }),
     tx.booking.findMany({ where: { startsAt: { lt: dayEnd }, endsAt: { gt: dayStart }, reservation: { status: { not: 'CANCELLED' } } }, select: { staffId: true, roomId: true, startsAt: true, endsAt: true } }),
     tx.timeOff.findMany({ where: { startsAt: { lt: dayEnd }, endsAt: { gt: dayStart } }, select: { staffId: true, startsAt: true, endsAt: true } }),
   ]);
@@ -288,7 +303,7 @@ async function loadContextTx(tx: Parameters<Parameters<typeof prisma.$transactio
     weekday, dayStart, dayEnd,
     serviceBySlug: new Map(servicesRaw.map((s) => [s.slug, s])),
     staffList: staff.map((s) => ({ id: s.id, name: s.name, slugs: new Set(s.services.map((x) => x.slug)), hours: s.workingHours })),
-    rooms: roomsRaw.map((r) => ({ id: r.id, name: r.name, categories: new Set(r.categories.split(',')) })),
+    rooms: roomsRaw.map((r) => ({ id: r.id, name: r.name, categories: new Set(r.categories.split(',')), capacity: r.capacity })),
     bookings, timeOff,
   };
 }

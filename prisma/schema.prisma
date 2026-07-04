@@ -41,6 +41,7 @@ model Room {
   name       String
   active     Boolean   @default(true)
   categories String
+  capacity   Int       @default(1) // beds — how many treatments can run at once
   bookings   Booking[]
 }
 

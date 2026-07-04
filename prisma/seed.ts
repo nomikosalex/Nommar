@@ -33,7 +33,7 @@ async function main() {
   // 2b) Treatment rooms (with allowed categories)
   if ((await prisma.room.count()) === 0) {
     for (const r of ROOMS) {
-      await prisma.room.create({ data: { name: r.name, categories: r.categories.join(',') } });
+      await prisma.room.create({ data: { name: r.name, categories: r.categories.join(','), capacity: r.capacity ?? 1 } });
     }
     console.log(`✓ rooms: ${ROOMS.length}`);
   } else {

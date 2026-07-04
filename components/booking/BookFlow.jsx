@@ -272,6 +272,9 @@ export default function BookFlow() {
                   {!loadingSlots && slots && slots.length === 0 && (
                     <div>
                       <Italic>{t.noTimes}</Italic>
+                      {guestCount === 2 && (
+                        <p style={css('font-family:var(--font-jost),sans-serif;font-size:12.5px;color:#8A7965;line-height:1.6;max-width:52ch;margin:8px 0 0;')}>{t.twoGuestNote}</p>
+                      )}
                       <div style={css('margin-top:10px;')}>
                         <FX as="button" type="button" onClick={focusDate} style={ghostBtn} hover="border-color:#C2A56B;color:#3D2F25;">{t.tryAnotherDate}</FX>
                       </div>
