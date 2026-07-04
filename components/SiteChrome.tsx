@@ -26,9 +26,10 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
           data-motion={CONFIG.enableMotion ? 'on' : 'off'}
           style={css("font-family:var(--font-jost),sans-serif;background:#FAF5EC;color:#3D2F25;min-height:100dvh;overflow-x:hidden;font-weight:300;")}
         >
+          <a href="#main" className="skip-link">Skip to content</a>
           <AnnouncementBanner />
           <Nav />
-          {children}
+          <main id="main">{children}</main>
           <Footer />
           <FloatingBook />
         </div>

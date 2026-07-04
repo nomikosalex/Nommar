@@ -41,6 +41,7 @@ export function Parallax({ children, style }) {
           top: -drift,
           height: `calc(100% + ${drift * 2}px)`,
           y,
+          willChange: 'transform',
         }}
       >
         {children}

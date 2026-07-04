@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { css } from '@/lib/css';
@@ -54,6 +54,19 @@ export default function BookFlow() {
   const [promo, setPromo] = useState(''); // code the customer typed
   const [promoPct, setPromoPct] = useState(0); // 0 until a valid code is applied
   const [promoMsg, setPromoMsg] = useState(''); // '', 'ok', or 'bad'
+  const errorRef = useRef(null);
+  const dateInputRef = useRef(null);
+  const focusDate = () => {
+    const el = dateInputRef.current;
+    if (!el) return;
+    el.focus();
+    try { el.showPicker?.(); } catch { /* not supported */ }
+  };
+
+  // Move focus to the error banner when one appears (screen readers + visibility).
+  useEffect(() => {
+    if (error && errorRef.current) errorRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [error]);
 
   const applyPromo = () => {
     const pct = validatePromo(promo);
@@ -206,7 +219,7 @@ export default function BookFlow() {
   return (
     <Shell t={t}>
       <Stepper steps={STEPS} step={step} />
-      {error && <div style={css("max-width:820px;margin:0 auto 22px;background:#FBEFEF;border:1px solid #E3B7B7;color:#9B4444;font-family:var(--font-jost),sans-serif;font-size:13.5px;padding:13px 18px;border-radius:2px;text-align:center;")}>{error}</div>}
+      {error && <div ref={errorRef} role="alert" aria-live="assertive" tabIndex={-1} style={css("max-width:820px;margin:0 auto 22px;background:#FBEFEF;border:1px solid #E3B7B7;color:#9B4444;font-family:var(--font-jost),sans-serif;font-size:13.5px;padding:13px 18px;border-radius:2px;text-align:center;")}>{error}</div>}
 
       <div style={css('display:grid;gap:clamp(20px,3vw,40px);' + (withCart ? 'grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));align-items:start;' : ''))}>
         <div>
@@ -246,12 +259,24 @@ export default function BookFlow() {
           {step === 3 && (
             <div>
               <label style={css(labelStyle)}>{t.chooseDate}</label>
-              <input type="date" min={todayStr()} value={date} onChange={(e) => { setDate(e.target.value); loadSlots(e.target.value); }} style={css(inputStyle + 'max-width:240px;cursor:pointer;')} />
+              <input ref={dateInputRef} type="date" min={todayStr()} value={date} onChange={(e) => { setDate(e.target.value); loadSlots(e.target.value); }} style={css(inputStyle + 'max-width:clamp(240px,90vw,320px);cursor:pointer;')} />
               {date && (
                 <div style={css('margin-top:26px;')}>
                   <label style={css(labelStyle)}>{t.availableTimes}</label>
-                  {loadingSlots && <Italic>{t.findingTimes}</Italic>}
-                  {!loadingSlots && slots && slots.length === 0 && <Italic>{t.noTimes}</Italic>}
+                  {loadingSlots && (
+                    <div style={css('display:flex;align-items:center;gap:10px;')}>
+                      <span aria-hidden="true" style={css('width:15px;height:15px;border:2px solid rgba(194,165,107,0.35);border-top-color:#C2A56B;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;')} />
+                      <Italic>{t.findingTimes}</Italic>
+                    </div>
+                  )}
+                  {!loadingSlots && slots && slots.length === 0 && (
+                    <div>
+                      <Italic>{t.noTimes}</Italic>
+                      <div style={css('margin-top:10px;')}>
+                        <FX as="button" type="button" onClick={focusDate} style={ghostBtn} hover="border-color:#C2A56B;color:#3D2F25;">{t.tryAnotherDate}</FX>
+                      </div>
+                    </div>
+                  )}
                   {!loadingSlots && slots && slots.length > 0 && (
                     <div style={css('display:flex;flex-wrap:wrap;gap:10px;')}>
                       {slots.map((s) => (
@@ -358,7 +383,7 @@ function ActionBar({ t, count, minutes, onBack, primary }) {
         <div style={css('display:flex;align-items:center;gap:10px;')}>
           <FX as="button" onClick={onBack} style="font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#8A7965;background:transparent;border:1px solid rgba(194,165,107,0.45);padding:13px 18px;cursor:pointer;border-radius:1px;min-height:46px;" hover="border-color:#C2A56B;color:#3D2F25;">← {t.backBtn}</FX>
           {primary && (
-            <FX as="button" onClick={primary.onClick} style={"font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:14px 30px;cursor:pointer;border-radius:1px;box-shadow:0 10px 26px -10px rgba(194,165,107,0.6);min-height:46px;" + (primary.disabled ? 'opacity:0.6;pointer-events:none;' : '')} hover="transform:translateY(-2px);">{primary.label}</FX>
+            <FX as="button" onClick={primary.onClick} aria-disabled={primary.disabled || undefined} style={"font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:14px 30px;cursor:pointer;border-radius:1px;box-shadow:0 10px 26px -10px rgba(194,165,107,0.6);min-height:46px;" + (primary.disabled ? 'opacity:0.6;cursor:wait;pointer-events:none;' : '')} hover="transform:translateY(-2px);">{primary.label}</FX>
           )}
         </div>
       </div>
@@ -471,7 +496,7 @@ function Field({ label, value, onChange, type = 'text', id, autoComplete }) {
 
 function CartPanel({ t, guestCount, carts, info }) {
   return (
-    <aside style={css(card + 'padding:24px 24px 26px;position:sticky;top:90px;')}>
+    <aside style={css(card + 'padding:24px 24px 26px;position:sticky;top:calc(90px + env(safe-area-inset-top));max-height:calc(100dvh - 110px);overflow-y:auto;')}>
       <div style={css(eyebrow + 'margin-bottom:16px;')}>{t.yourBooking}</div>
       {Array.from({ length: guestCount }, (_, g) => {
         const items = carts[g].map(info);

@@ -55,7 +55,7 @@ export default function AnnouncementBanner() {
       <button
         onClick={dismiss}
         aria-label={c.close}
-        style={css('position:absolute;right:12px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:#3D2F25;font-size:16px;line-height:1;cursor:pointer;opacity:0.7;')}
+        style={css('position:absolute;right:4px;top:50%;transform:translateY(-50%);min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:#3D2F25;font-size:18px;line-height:1;cursor:pointer;opacity:0.7;')}
       >
         ×
       </button>

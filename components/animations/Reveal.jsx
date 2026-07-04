@@ -37,7 +37,7 @@ export function Reveal({ children, delay = 0, direction = 'up', style, className
     <motion.div
       ref={ref}
       className={className}
-      style={styleObj}
+      style={{ ...styleObj, willChange: 'opacity, transform' }}
       initial={{ opacity: 0, ...offset }}
       animate={inView ? { opacity: 1, x: 0, y: 0 } : {}}
       transition={{ duration: ANIMATION.duration.slow, delay, ease: ANIMATION.ease.default }}

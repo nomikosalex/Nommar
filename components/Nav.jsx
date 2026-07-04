@@ -50,11 +50,11 @@ export default function Nav() {
             ))}
             <div style={css('width:1px;height:18px;background:rgba(194,165,107,0.4);')} />
             <div style={css("display:flex;align-items:center;gap:8px;font-family:var(--font-jost),sans-serif;font-size:11.5px;letter-spacing:0.16em;")}>
-              <FX as="button" onClick={() => setLang('en')} style="background:none;border:none;cursor:pointer;padding:2px;letter-spacing:0.16em;" hover="color:#C2A56B;">
+              <FX as="button" onClick={() => setLang('en')} aria-label="English" aria-pressed={lang === 'en'} style="background:none;border:none;cursor:pointer;padding:8px 10px;min-height:44px;display:inline-flex;align-items:center;letter-spacing:0.16em;" hover="color:#C2A56B;">
                 <span style={css(lang === 'en' ? 'color:#C2A56B;font-weight:500;' : 'color:#A8967C;font-weight:400;')}>EN</span>
               </FX>
               <span style={css('color:rgba(168,150,124,0.7);')}>/</span>
-              <FX as="button" onClick={() => setLang('gr')} style="background:none;border:none;cursor:pointer;padding:2px;letter-spacing:0.16em;" hover="color:#C2A56B;">
+              <FX as="button" onClick={() => setLang('gr')} aria-label="Ελληνικά" aria-pressed={lang === 'gr'} style="background:none;border:none;cursor:pointer;padding:8px 10px;min-height:44px;display:inline-flex;align-items:center;letter-spacing:0.16em;" hover="color:#C2A56B;">
                 <span style={css(lang === 'gr' ? 'color:#C2A56B;font-weight:500;' : 'color:#A8967C;font-weight:400;')}>GR</span>
               </FX>
             </div>
@@ -67,7 +67,7 @@ export default function Nav() {
             <Link href="/book" onClick={() => setMenuOpen(false)} style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:10px 18px;cursor:pointer;border-radius:1px;text-decoration:none;")}>
               {t.bookNow}
             </Link>
-            <button onClick={() => setMenuOpen((m) => !m)} aria-label="Menu" style={css('background:none;border:none;cursor:pointer;display:flex;flex-direction:column;gap:5px;padding:6px 2px;')}>
+            <button onClick={() => setMenuOpen((m) => !m)} aria-label="Menu" aria-expanded={menuOpen} aria-controls="mobile-menu" style={css('background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:8px;min-width:44px;min-height:44px;')}>
               <span style={css('width:24px;height:1.5px;background:#3D2F25;display:block;')} />
               <span style={css('width:24px;height:1.5px;background:#3D2F25;display:block;')} />
               <span style={css('width:24px;height:1.5px;background:#3D2F25;display:block;')} />
@@ -77,7 +77,7 @@ export default function Nav() {
       </div>
 
       {isMobile && menuOpen && (
-        <div style={css('border-top:1px solid rgba(194,165,107,0.28);background:#FAF5EC;padding:8px clamp(18px,5vw,40px) 22px;')}>
+        <div id="mobile-menu" style={css('border-top:1px solid rgba(194,165,107,0.28);background:#FAF5EC;padding:8px clamp(18px,5vw,40px) 22px;')}>
           {items.map((item) => (
             <Link
               key={item.key}
