@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
-import Placeholder from './Placeholder';
 import { CONTACT, YEAR } from '@/lib/data';
 
 const NAV = [
@@ -19,9 +18,6 @@ export default function Footer() {
 
   return (
     <footer style={css('background:#3D2F25;color:#E4D6BF;')}>
-      <div style={css('height:clamp(160px,22vw,240px);overflow:hidden;border-bottom:1px solid rgba(194,165,107,0.25);')}>
-        <Placeholder label="kamari, santorini · map" style="width:100%;height:100%;" />
-      </div>
       <div style={css('max-width:1240px;margin:0 auto;padding:clamp(54px,7vw,88px) clamp(24px,6vw,72px) clamp(30px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:clamp(36px,4vw,56px);')}>
         <div>
           <div style={css('display:flex;align-items:center;gap:12px;margin-bottom:18px;')}>
