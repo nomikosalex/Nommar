@@ -7,24 +7,26 @@ import { useLang } from '@/lib/lang';
 import { CONFIG } from '@/lib/site.config';
 import Placeholder from '@/components/Placeholder';
 import { Reveal } from '@/components/animations/Reveal';
-import { CATEGORIES, AROMAS, priceLabel, slugify } from '@/lib/data';
+import { localizedCategories, localizedAromas, priceLabel } from '@/lib/data';
 
 export default function Services() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const router = useRouter();
   const [aroma, setAroma] = useState(0);
-  const price = priceLabel(CONFIG.priceMode);
-  const book = (name) => router.push('/book?service=' + slugify(name));
+  const price = priceLabel(CONFIG.priceMode, lang);
+  const categories = localizedCategories(lang);
+  const aromas = localizedAromas(lang);
+  const book = (slug) => router.push('/book?service=' + slug);
 
   return (
     <div>
       <section style={css('text-align:center;padding:clamp(64px,8vw,112px) clamp(24px,6vw,40px) clamp(20px,3vw,40px);')}>
-        <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>The Menu</div>
-        <h1 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(32px,5vw,58px);letter-spacing:0.05em;color:#3D2F25;margin:0;")}>Services</h1>
-        <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(18px,2vw,24px);color:#8A7965;margin:18px auto 0;max-width:40ch;")}>Every ritual is tailored to you. Prices are confirmed at booking.</p>
+        <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>{t.servicesEyebrow}</div>
+        <h1 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(32px,5vw,58px);letter-spacing:0.05em;color:#3D2F25;margin:0;")}>{t.navServices}</h1>
+        <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(18px,2vw,24px);color:#8A7965;margin:18px auto 0;max-width:40ch;")}>{t.servicesSub}</p>
       </section>
 
-      {CATEGORIES.map((cat) => (
+      {categories.map((cat) => (
         <section key={cat.index} style={css('max-width:1280px;margin:0 auto;padding:clamp(40px,5vw,72px) clamp(24px,6vw,72px);')}>
           <div style={css('display:flex;align-items:flex-end;gap:20px;margin-bottom:14px;')}>
             <div style={css("font-family:var(--font-cinzel),serif;font-size:clamp(34px,5vw,56px);color:rgba(194,165,107,0.42);line-height:0.8;font-weight:400;")}>{cat.index}</div>
@@ -51,7 +53,7 @@ export default function Services() {
 
           <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:clamp(22px,2.5vw,34px);align-items:stretch;')}>
             {cat.services.map((svc, i) => (
-              <Reveal key={svc.name} delay={i * 0.06} style="display:flex;">
+              <Reveal key={svc.slug} delay={i * 0.06} style="display:flex;">
                 <FX style="display:flex;flex-direction:column;width:100%;background:#FFFDF8;border:1px solid rgba(194,165,107,0.25);overflow:hidden;box-shadow:0 18px 42px -30px rgba(61,47,37,0.5);transition:transform .4s ease,box-shadow .4s ease,border-color .4s ease;" hover="transform:translateY(-6px);box-shadow:0 32px 60px -32px rgba(61,47,37,0.45);border-color:rgba(194,165,107,0.55);">
                   <div style={css('position:relative;height:180px;')}>
                     <Placeholder label={svc.img} style="width:100%;height:100%;" />
@@ -79,9 +81,9 @@ export default function Services() {
 
                     {svc.isAroma && (
                       <div style={css('margin-bottom:20px;')}>
-                        <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:12px;")}>Choose Your Aroma</div>
+                        <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:12px;")}>{t.chooseAroma}</div>
                         <div style={css('display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;')}>
-                          {AROMAS.map((a, idx) =>
+                          {aromas.map((a, idx) =>
                             idx === aroma ? (
                               <button key={a.name} onClick={() => setAroma(idx)} style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:1px solid #C2A56B;padding:9px 15px;cursor:pointer;border-radius:2px;")}>{a.name}</button>
                             ) : (
@@ -89,13 +91,13 @@ export default function Services() {
                             )
                           )}
                         </div>
-                        <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:16px;line-height:1.5;color:#6E5E50;margin:0;")}>{AROMAS[aroma].note}</p>
+                        <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:16px;line-height:1.5;color:#6E5E50;margin:0;")}>{aromas[aroma].note}</p>
                       </div>
                     )}
 
                     {svc.options && (
                       <div style={css('margin-bottom:20px;')}>
-                        <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:12px;")}>Choose Your Ritual</div>
+                        <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:12px;")}>{t.chooseRitual}</div>
                         <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
                           {svc.options.map((o) => (
                             <span key={o} style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.08em;color:#6E5E50;background:#F3EADA;border:1px solid rgba(194,165,107,0.35);padding:9px 16px;border-radius:2px;")}>{o}</span>
@@ -106,7 +108,7 @@ export default function Services() {
 
                     {svc.solutions && (
                       <div style={css('margin-bottom:20px;')}>
-                        <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:12px;")}>Personalized Solutions</div>
+                        <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:12px;")}>{t.personalizedSolutions}</div>
                         <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
                           {svc.solutions.map((s) => (
                             <span key={s} style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.08em;color:#6E5E50;background:#F3EADA;border:1px solid rgba(194,165,107,0.35);padding:9px 16px;border-radius:2px;")}>{s}</span>
@@ -119,10 +121,10 @@ export default function Services() {
                     <div style={css('height:1px;background:rgba(194,165,107,0.3);margin-bottom:18px;')} />
                     <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
                       <div style={css('display:flex;flex-direction:column;')}>
-                        <span style={css("font-family:var(--font-jost),sans-serif;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;margin-bottom:3px;")}>Investment</span>
+                        <span style={css("font-family:var(--font-jost),sans-serif;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;margin-bottom:3px;")}>{t.investment}</span>
                         <span style={css("font-family:var(--font-cormorant),serif;font-size:24px;font-weight:600;color:#C2A56B;line-height:1;")}>{price}</span>
                       </div>
-                      <FX as="button" onClick={() => book(svc.name)} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:transparent;border:1px solid #C2A56B;padding:11px 20px;cursor:pointer;border-radius:1px;transition:background .35s ease,color .35s ease;" hover="background:#C2A56B;color:#FAF5EC;">{t.book}</FX>
+                      <FX as="button" onClick={() => book(svc.slug)} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:transparent;border:1px solid #C2A56B;padding:11px 20px;cursor:pointer;border-radius:1px;transition:background .35s ease,color .35s ease;" hover="background:#C2A56B;color:#FAF5EC;">{t.book}</FX>
                     </div>
                   </div>
                 </FX>

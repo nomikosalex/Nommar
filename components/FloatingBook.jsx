@@ -1,4 +1,5 @@
 'use client';
+import { usePathname } from 'next/navigation';
 import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
@@ -15,6 +16,10 @@ const WHATSAPP_ICON = (
 export default function FloatingBook() {
   const { t } = useLang();
   const isMobile = useIsMobile();
+  const pathname = usePathname();
+
+  // Hide on the booking flow — the page already has its own booking actions.
+  if (pathname?.startsWith('/book')) return null;
 
   const message = encodeURIComponent("Hello Nommar, I'd like to book a treatment.");
   const href = `https://wa.me/${CONTACT.whatsapp}?text=${message}`;

@@ -8,10 +8,11 @@ import Placeholder from '@/components/Placeholder';
 import Testimonials from '@/components/Testimonials';
 import { Reveal } from '@/components/animations/Reveal';
 import { Parallax } from '@/components/animations/Parallax';
-import { HOME_CATS } from '@/lib/data';
+import { localizedHomeCats } from '@/lib/data';
 
 export default function Home() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const homeCats = localizedHomeCats(lang);
   const router = useRouter();
   const heroStyle = CONFIG.heroStyle;
 
@@ -25,7 +26,7 @@ export default function Home() {
           </Parallax>
           <div style={css('position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 45%,rgba(250,245,236,0.62),rgba(250,245,236,0.93) 78%);')} />
           <Reveal style="position:relative;text-align:center;padding:90px clamp(20px,5vw,40px);display:flex;flex-direction:column;align-items:center;">
-            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:26px;")}>Kamari · Santorini</div>
+            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:26px;")}>{t.heroLocation}</div>
             <img src="/assets/logo-medallion.png" alt="Nommar — Beauty &amp; Spa by Margarita" style={css('width:clamp(250px,30vw,360px);height:auto;display:block;filter:drop-shadow(0 20px 40px rgba(194,165,107,0.25));')} />
             <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-weight:400;font-size:clamp(23px,3.2vw,38px);line-height:1.4;color:#3D2F25;max-width:18ch;margin:34px 0 0;")}>&ldquo;{t.tagline}&rdquo;</p>
             <FX as="button" onClick={() => router.push('/book')} style="margin-top:40px;font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:16px 38px;cursor:pointer;border-radius:1px;box-shadow:0 12px 30px -10px rgba(194,165,107,0.6);transition:transform .4s ease,box-shadow .4s ease;" hover="transform:translateY(-3px);box-shadow:0 18px 38px -12px rgba(194,165,107,0.7);">{t.bookRitual}</FX>
@@ -37,7 +38,7 @@ export default function Home() {
       {heroStyle === 'split' && (
         <section style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));min-height:86dvh;')}>
           <div style={css('display:flex;flex-direction:column;justify-content:center;padding:clamp(48px,7vw,110px) clamp(24px,6vw,90px);')}>
-            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:24px;")}>Kamari · Santorini</div>
+            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:24px;")}>{t.heroLocation}</div>
             <div style={css("font-family:var(--font-cinzel),serif;font-size:clamp(44px,7vw,86px);font-weight:600;letter-spacing:0.08em;line-height:1;background:linear-gradient(180deg,#BFA15F,#E6CF95 50%,#BFA15F);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;")}>NOMMAR</div>
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.36em;text-transform:uppercase;color:#A8967C;margin-top:14px;")}>Beauty &amp; Spa</div>
             <div style={css("font-family:var(--font-pinyon),cursive;font-size:38px;color:#C2A56B;margin-top:2px;line-height:1.1;")}>by Margarita</div>
@@ -56,7 +57,7 @@ export default function Home() {
       {heroStyle === 'band' && (
         <section>
           <Reveal style="text-align:center;padding:clamp(56px,8vw,104px) clamp(20px,5vw,40px) clamp(40px,5vw,60px);display:flex;flex-direction:column;align-items:center;">
-            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:24px;")}>Kamari · Santorini</div>
+            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:24px;")}>{t.heroLocation}</div>
             <img src="/assets/logo-medallion.png" alt="Nommar" style={css('width:clamp(240px,28vw,330px);height:auto;filter:drop-shadow(0 18px 36px rgba(194,165,107,0.22));')} />
             <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(22px,3vw,36px);line-height:1.4;color:#3D2F25;max-width:18ch;margin:30px 0 0;")}>&ldquo;{t.tagline}&rdquo;</p>
             <FX as="button" onClick={() => router.push('/book')} style="margin-top:36px;font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:16px 38px;cursor:pointer;border-radius:1px;box-shadow:0 12px 30px -10px rgba(194,165,107,0.6);transition:transform .4s ease;" hover="transform:translateY(-3px);">{t.bookRitual}</FX>
@@ -75,8 +76,8 @@ export default function Home() {
             <div style={css('width:6px;height:6px;background:#C2A56B;transform:rotate(45deg);')} />
             <div style={css('height:1px;width:54px;background:linear-gradient(90deg,#C2A56B,transparent);')} />
           </div>
-          <p style={css("font-family:var(--font-cormorant),serif;font-size:clamp(22px,2.7vw,32px);line-height:1.6;color:#3D2F25;font-weight:400;margin:0;")}>At Nommar, we believe wellness is not a luxury but a necessity. Our treatments are designed to create moments of deep relaxation, helping you disconnect from daily stress and reconnect with yourself.</p>
-          <p style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:clamp(15px,1.2vw,17px);line-height:1.95;color:#8A7965;max-width:60ch;margin:28px auto 0;")}>Inspired by mindful rituals and personalized care, every experience is tailored to restore balance to body and mind.</p>
+          <p style={css("font-family:var(--font-cormorant),serif;font-size:clamp(22px,2.7vw,32px);line-height:1.6;color:#3D2F25;font-weight:400;margin:0;")}>{t.introLead}</p>
+          <p style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:clamp(15px,1.2vw,17px);line-height:1.95;color:#8A7965;max-width:60ch;margin:28px auto 0;")}>{t.introSub}</p>
         </Reveal>
       </section>
 
@@ -89,10 +90,10 @@ export default function Home() {
             </div>
           </Reveal>
           <Reveal direction="left">
-            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>Signature Experience</div>
-            <h2 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(28px,3.6vw,44px);letter-spacing:0.03em;color:#3D2F25;margin:0 0 8px;line-height:1.18;")}>The Japanese Head Spa</h2>
-            <div style={css("font-family:var(--font-pinyon),cursive;font-size:30px;color:#C2A56B;margin-bottom:22px;")}>a ritual for the senses</div>
-            <p style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:clamp(15px,1.2vw,17px);line-height:1.95;color:#6E5E50;max-width:52ch;margin:0 0 24px;")}>Drawing on the quiet discipline of Japanese head-spa care, our signature ritual moves slowly through scalp cleansing, therapeutic massage and restorative facial work — closing with a warm mineral-salt foot soak. A complete journey from head to toe, designed to still the mind.</p>
+            <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>{t.sigEyebrow}</div>
+            <h2 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(28px,3.6vw,44px);letter-spacing:0.03em;color:#3D2F25;margin:0 0 8px;line-height:1.18;")}>{t.sigTitle}</h2>
+            <div style={css("font-family:var(--font-pinyon),cursive;font-size:30px;color:#C2A56B;margin-bottom:22px;")}>{t.sigScript}</div>
+            <p style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:clamp(15px,1.2vw,17px);line-height:1.95;color:#6E5E50;max-width:52ch;margin:0 0 24px;")}>{t.sigDesc}</p>
             <FX as="button" onClick={() => router.push('/services')} style="font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:transparent;border:1px solid #C2A56B;padding:14px 30px;cursor:pointer;border-radius:1px;transition:background .35s ease,color .35s ease;" hover="background:#C2A56B;color:#FAF5EC;">{t.exploreHeadSpa}</FX>
           </Reveal>
         </div>
@@ -101,11 +102,11 @@ export default function Home() {
       {/* CATEGORY PREVIEWS */}
       <section style={css('max-width:1280px;margin:0 auto;padding:clamp(70px,9vw,128px) clamp(24px,6vw,72px);')}>
         <Reveal style="text-align:center;margin-bottom:clamp(42px,5vw,68px);">
-          <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:16px;")}>Our Rituals</div>
-          <h2 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(28px,3.6vw,42px);letter-spacing:0.04em;color:#3D2F25;margin:0;")}>A World of Wellness</h2>
+          <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:16px;")}>{t.ourRituals}</div>
+          <h2 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(28px,3.6vw,42px);letter-spacing:0.04em;color:#3D2F25;margin:0;")}>{t.worldWellness}</h2>
         </Reveal>
         <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:clamp(20px,2.4vw,32px);')}>
-          {HOME_CATS.map((cat, i) => (
+          {homeCats.map((cat, i) => (
             <Reveal key={cat.name} delay={i * 0.08}>
               <FX as="button" onClick={() => router.push('/services')} style="display:block;width:100%;text-align:left;background:#FFFDF8;border:1px solid rgba(194,165,107,0.25);cursor:pointer;padding:0;overflow:hidden;box-shadow:0 18px 40px -30px rgba(61,47,37,0.5);transition:transform .4s ease,box-shadow .4s ease,border-color .4s ease;" hover="transform:translateY(-6px);box-shadow:0 30px 56px -30px rgba(61,47,37,0.45);border-color:rgba(194,165,107,0.55);">
                 <div style={css('height:200px;')}>
@@ -126,7 +127,7 @@ export default function Home() {
       <section style={css('background:#F3EADA;')}>
         <Reveal style="max-width:880px;margin:0 auto;padding:clamp(64px,8vw,120px) clamp(24px,6vw,40px);text-align:center;">
           <div style={css("font-family:var(--font-pinyon),cursive;font-size:clamp(40px,6vw,64px);color:#C2A56B;line-height:1;margin-bottom:18px;")}>by Margarita</div>
-          <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(21px,2.6vw,30px);line-height:1.6;color:#3D2F25;max-width:30ch;margin:0 auto 30px;")}>&ldquo;Wellness, to me, is care made personal — a moment that belongs entirely to you.&rdquo;</p>
+          <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(21px,2.6vw,30px);line-height:1.6;color:#3D2F25;max-width:30ch;margin:0 auto 30px;")}>&ldquo;{t.margaritaQuote}&rdquo;</p>
           <FX as="button" onClick={() => router.push('/about')} style="font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:transparent;border:1px solid #C2A56B;padding:14px 30px;cursor:pointer;border-radius:1px;transition:background .35s ease,color .35s ease;" hover="background:#C2A56B;color:#FAF5EC;">{t.ourStory}</FX>
         </Reveal>
       </section>

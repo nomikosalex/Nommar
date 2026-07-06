@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
-import { PACKAGES, slugify } from '@/lib/data';
+import { PACKAGES, slugify, categoryLabel } from '@/lib/data';
 import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo } from '@/lib/booking.config';
 
 const CATEGORY_ORDER = ['Head Spa', 'Massage', 'Body Treatments', 'Facial Treatments'];
@@ -68,6 +68,12 @@ export default function BookFlow() {
     if (error && errorRef.current) errorRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [error]);
 
+  // Start each step (and the confirmation screen) from the top — on mobile the
+  // next step would otherwise open at the previous scroll height.
+  useEffect(() => {
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step, done]);
+
   const applyPromo = () => {
     const pct = validatePromo(promo);
     setPromoPct(pct);
@@ -103,8 +109,8 @@ export default function BookFlow() {
   const grouped = useMemo(() => {
     const by = {};
     for (const s of services) (by[s.category] ||= []).push(s);
-    return CATEGORY_ORDER.filter((c) => by[c]).map((c) => ({ category: c, items: by[c] }));
-  }, [services]);
+    return CATEGORY_ORDER.filter((c) => by[c]).map((c) => ({ category: c, label: categoryLabel(c, lang), items: by[c] }));
+  }, [services, lang]);
 
   const guestsPayload = () => Array.from({ length: guestCount }, (_, g) => ({ services: carts[g] }));
 
@@ -438,7 +444,7 @@ function ServicePicker({ t, grouped, packages, cart, pkgBySlug, onToggle, onPack
 
       {grouped.map((g) => (
         <div key={g.category} style={css('margin-bottom:26px;')}>
-          <div style={css(eyebrow + 'margin-bottom:14px;')}>{g.category}</div>
+          <div style={css(eyebrow + 'margin-bottom:14px;')}>{g.label}</div>
           <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px;')}>
             {g.items.map((s) => (
               <Row key={s.slug} t={t} name={s.name} duration={s.durationMin} selected={inCart(s.slug)} disabled={hasPackage} onClick={() => onToggle(s.slug)} />
