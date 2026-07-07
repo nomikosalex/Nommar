@@ -18,5 +18,14 @@ export async function sendEmail(mail: Mail) {
   }
 
   const resend = new Resend(key);
-  return resend.emails.send({ from, to: mail.to, subject: mail.subject, html: mail.html, text: mail.text });
+  try {
+    const { data, error } = await resend.emails.send({ from, to: mail.to, subject: mail.subject, html: mail.html, text: mail.text });
+    // Resend returns { error } instead of throwing — surface it in the logs so
+    // deliverability problems (unverified domain, bad from, etc.) are visible.
+    if (error) console.error('[email] Resend error:', error, `(to: ${mail.to}, from: ${from})`);
+    return { data, error };
+  } catch (err) {
+    console.error('[email] send threw:', err, `(to: ${mail.to})`);
+    return { error: err };
+  }
 }
