@@ -119,7 +119,7 @@ export async function sendNewBookingEmails(r: ReservationLike) {
   const dayEn = first ? dateOf(first.startsAt, 'en') : '';
   const body = itinerary(r, loc);
   const url = reservationUrl(r.token);
-  const spaEmail = process.env.SPA_EMAIL || 'hello@nommar.gr';
+  const spaEmail = process.env.SPA_EMAIL || 'info@nommar.gr';
 
   const guest = sendEmail({
     to: r.customerEmail,

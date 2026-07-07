@@ -45,7 +45,7 @@ const JSON_LD = {
   image: '/assets/logo-medallion.png',
   address: { '@type': 'PostalAddress', addressLocality: 'Kamari', addressRegion: 'Santorini', addressCountry: 'GR' },
   telephone: '+306980133499',
-  email: 'hello@nommar.gr',
+  email: 'info@nommar.gr',
   sameAs: ['https://www.instagram.com/nommar.beauty.spa/'],
   openingHours: 'Mo-Su 10:00-20:00',
   priceRange: '€€€',

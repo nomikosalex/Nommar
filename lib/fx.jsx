@@ -13,7 +13,7 @@ import { useReducedMotion } from './useReducedMotion';
  * events) so taps give visual feedback. Respects prefers-reduced-motion by
  * dropping transform-based movement from the applied states.
  */
-export function FX({ as = 'div', style, hover, focus, children, ...rest }) {
+export function FX({ as = 'div', style, hover = '', focus = '', children, ...rest }) {
   const reduced = useReducedMotion();
   const [isHover, setHover] = useState(false);
   const [isFocus, setFocus] = useState(false);

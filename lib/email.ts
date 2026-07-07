@@ -8,7 +8,7 @@ type Mail = { to: string; subject: string; html: string; text?: string };
  */
 export async function sendEmail(mail: Mail) {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'Nommar <hello@nommar.gr>';
+  const from = process.env.EMAIL_FROM || 'Nommar <info@nommar.gr>';
 
   if (!key) {
     console.log('\n[email:dev] (no RESEND_API_KEY — not actually sent)');

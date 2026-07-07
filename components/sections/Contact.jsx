@@ -6,10 +6,13 @@ import { useLang } from '@/lib/lang';
 import { Reveal } from '@/components/animations/Reveal';
 import { CONTACT } from '@/lib/data';
 
+const telHref = (p) => 'tel:' + p.replace(/[^\d+]/g, '');
+
 export default function Contact() {
   const { t } = useLang();
   const waMessage = encodeURIComponent("Hello Nommar, I'd like to book a treatment.");
   const waHref = `https://wa.me/${CONTACT.whatsapp}?text=${waMessage}`;
+  const linkStyle = 'font-family:var(--font-jost),sans-serif;font-weight:300;font-size:16px;color:#3D2F25;text-decoration:none;';
 
   return (
     <div>
@@ -29,11 +32,14 @@ export default function Contact() {
             </div>
             <div>
               <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;margin-bottom:7px;")}>{t.labelTelephone}</div>
-              <div style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:16px;color:#3D2F25;line-height:1.7;")}>{CONTACT.phones[0]}<br />{CONTACT.phones[1]}</div>
+              <div style={css("line-height:1.7;")}>
+                <FX as="a" href={telHref(CONTACT.phones[0])} style={linkStyle} hover="color:#C2A56B;">{CONTACT.phones[0]}</FX><br />
+                <FX as="a" href={telHref(CONTACT.phones[1])} style={linkStyle} hover="color:#C2A56B;">{CONTACT.phones[1]}</FX>
+              </div>
             </div>
             <div>
               <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;margin-bottom:7px;")}>{t.labelEmail}</div>
-              <div style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:16px;color:#3D2F25;")}>{CONTACT.email}</div>
+              <FX as="a" href={'mailto:' + CONTACT.email} style={linkStyle} hover="color:#C2A56B;">{CONTACT.email}</FX>
             </div>
             <div>
               <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;margin-bottom:7px;")}>{t.labelInstagram}</div>
@@ -45,7 +51,10 @@ export default function Contact() {
             </div>
           </div>
           <div style={css('margin-top:32px;border:1px solid rgba(194,165,107,0.3);overflow:hidden;box-shadow:0 18px 40px -32px rgba(61,47,37,0.5);')}>
-            <iframe title={t.mapTitle} src={CONTACT.mapEmbed} style={css('width:100%;height:260px;border:0;display:block;filter:saturate(0.78) contrast(0.96);')} loading="lazy" />
+            <iframe title={t.mapTitle} src={CONTACT.mapEmbed} style={css('width:100%;height:260px;border:0;display:block;filter:saturate(0.78) contrast(0.96);')} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+          </div>
+          <div style={css('margin-top:12px;')}>
+            <FX as="a" href={CONTACT.mapLink} target="_blank" rel="noopener" style="font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#C2A56B;text-decoration:none;" hover="color:#3D2F25;">{t.viewOnMap} &rarr;</FX>
           </div>
         </Reveal>
 

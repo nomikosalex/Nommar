@@ -5,6 +5,8 @@ import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
 import { CONTACT, YEAR } from '@/lib/data';
 
+const telHref = (p) => 'tel:' + p.replace(/[^\d+]/g, '');
+
 const NAV = [
   { href: '/', tkey: 'navHome' },
   { href: '/services', tkey: 'navServices' },
@@ -41,14 +43,16 @@ export default function Footer() {
         <div>
           <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>{t.footerVisit}</div>
           <div style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:14px;line-height:1.9;color:#C9B89B;")}>
-            {t.locCity}<br />{t.locRegion}<br />{CONTACT.phones[0]}<br />{CONTACT.phones[1]}
+            {t.locCity}<br />{t.locRegion}<br />
+            <FX as="a" href={telHref(CONTACT.phones[0])} style="color:#C9B89B;text-decoration:none;" hover="color:#C2A56B;">{CONTACT.phones[0]}</FX><br />
+            <FX as="a" href={telHref(CONTACT.phones[1])} style="color:#C9B89B;text-decoration:none;" hover="color:#C2A56B;">{CONTACT.phones[1]}</FX>
           </div>
         </div>
         <div>
           <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>{t.footerConnect}</div>
           <div style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:14px;line-height:1.9;color:#C9B89B;")}>
             <FX as="a" href={CONTACT.instagram.url} target="_blank" rel="noopener" style="color:#C9B89B;text-decoration:none;" hover="color:#C2A56B;">{CONTACT.instagram.handle}</FX>
-            <br />{CONTACT.email}<br />{t.hoursLine}
+            <br /><FX as="a" href={'mailto:' + CONTACT.email} style="color:#C9B89B;text-decoration:none;" hover="color:#C2A56B;">{CONTACT.email}</FX><br />{t.hoursLine}
           </div>
           <FX as={Link} href="/book" style="margin-top:20px;display:inline-block;font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:12px 22px;cursor:pointer;border-radius:1px;transition:transform .35s ease;text-decoration:none;" hover="transform:translateY(-2px);">{t.bookNow}</FX>
         </div>
