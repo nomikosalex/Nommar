@@ -1,5 +1,6 @@
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { prisma } from './prisma';
+import { Prisma } from './generated/prisma/client';
 import { packageBySlug } from './data';
 import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validatePromo, ceilToGrid } from './booking.config';
 
@@ -227,7 +228,50 @@ export async function createReservationForRequest(input: {
   const dateStr = formatInTimeZone(startUtc, TZ, 'yyyy-MM-dd');
   const startMin = Number(formatInTimeZone(startUtc, TZ, 'H')) * 60 + Number(formatInTimeZone(startUtc, TZ, 'm'));
 
-  return prisma.$transaction(async (tx) => {
+  // Run the assign-and-write as a SERIALIZABLE transaction so two requests that
+  // arrive simultaneously can't both read the slot as free and double-book the
+  // same therapist/room. Postgres aborts the loser with a serialization error;
+  // we retry a few times so bookings that don't truly collide still succeed up
+  // to real capacity (Serializable can also abort on false-positive conflicts).
+  const attempt = () =>
+    prisma.$transaction(runReservationTx(input, dateStr, startMin), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+
+  const MAX_ATTEMPTS = 8;
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    try {
+      return await attempt();
+    } catch (e) {
+      if (!isSerializationConflict(e)) throw e;
+      if (i === MAX_ATTEMPTS - 1) return { ok: false as const, code: 'unavailable' as const };
+      // jittered backoff before retrying the raced booking
+      await new Promise((r) => setTimeout(r, 20 * (i + 1) + Math.random() * 40));
+    }
+  }
+  return { ok: false as const, code: 'unavailable' as const };
+}
+
+// A serialization_failure (40001) / deadlock (40P01) means two bookings raced —
+// retryable. It surfaces differently depending on the layer: classic Prisma as
+// P2034, but through the @prisma/adapter-pg driver adapter as a DriverAdapterError
+// with kind 'TransactionWriteConflict' / originalCode '40001'. Match them all.
+function isSerializationConflict(e: unknown): boolean {
+  const err = e as { code?: string; originalCode?: string; kind?: string; meta?: { code?: string }; message?: string; originalMessage?: string };
+  const codes = [err?.code, err?.originalCode, err?.meta?.code];
+  if (codes.includes('P2034') || codes.includes('40001') || codes.includes('40P01')) return true;
+  if (err?.kind === 'TransactionWriteConflict') return true;
+  const msg = `${err?.message || ''} ${err?.originalMessage || ''}`.toLowerCase();
+  return /serializ|deadlock|write ?conflict/.test(msg);
+}
+
+// The transactional body, factored out so it can be retried under Serializable.
+function runReservationTx(
+  input: { guests: GuestInput[]; customer: { name: string; email: string; phone: string }; guest2?: { name?: string; email?: string; phone?: string }; notes?: string; promoCode?: string; locale?: string },
+  dateStr: string,
+  startMin: number,
+) {
+  return async (tx: Prisma.TransactionClient) => {
     // Reload context inside the transaction (fresh conflicts).
     const ctx = await loadContextTx(tx, dateStr);
     const { chains, error } = resolveChains(input.guests, ctx.serviceBySlug);
@@ -284,7 +328,7 @@ export async function createReservationForRequest(input: {
       });
     }
     return { ok: true as const, reservationId: reservation.id };
-  });
+  };
 }
 
 // transaction-scoped context loader (mirrors loadContext using the tx client)
