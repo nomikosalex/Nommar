@@ -2,7 +2,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import { el, enGB } from 'date-fns/locale';
 import { TZ } from './availability';
 import { sendEmail } from './email';
-import { reservationUrl } from './urls';
+import { reservationUrl, getBaseUrl } from './urls';
 import { PROMO } from './booking.config';
 
 type Locale = 'en' | 'gr';
@@ -47,6 +47,10 @@ const COPY = {
     confirmedIntro: (day: string) => `Your booking for <strong>${day}</strong> is confirmed. We can't wait to welcome you!`,
     reminderSubject: (day: string) => `Appointment reminder — ${day}`,
     reminderIntro: (day: string) => `A gentle reminder — your appointment is tomorrow, ${day}.`,
+    cancelledSubject: (day: string) => `Regarding your Nommar booking — ${day}`,
+    cancelledIntro: (day: string) => `We're sorry — your booking for <strong>${day}</strong> has been cancelled and will not take place.`,
+    cancelledOutro: `We'd love to welcome you another time — you can book again whenever suits you.`,
+    bookAgain: 'Book again',
     greeting: (name: string) => `Thank you, ${name}`,
     hello: (name: string) => `Hello, ${name}`,
     arriveEarly: 'Please arrive 10 minutes before your appointment.',
@@ -63,6 +67,10 @@ const COPY = {
     confirmedIntro: (day: string) => `Η κράτησή σας για <strong>${day}</strong> επιβεβαιώθηκε. Ανυπομονούμε να σας υποδεχθούμε!`,
     reminderSubject: (day: string) => `Υπενθύμιση ραντεβού — ${day}`,
     reminderIntro: (day: string) => `Μια σύντομη υπενθύμιση — το ραντεβού σας είναι αύριο, ${day}.`,
+    cancelledSubject: (day: string) => `Σχετικά με την κράτησή σας στο Nommar — ${day}`,
+    cancelledIntro: (day: string) => `Λυπούμαστε — η κράτησή σας για <strong>${day}</strong> ακυρώθηκε και δεν θα πραγματοποιηθεί.`,
+    cancelledOutro: `Θα χαρούμε να σας υποδεχθούμε μια άλλη φορά — μπορείτε να κάνετε νέα κράτηση όποτε σας βολεύει.`,
+    bookAgain: 'Νέα κράτηση',
     greeting: (name: string) => `Ευχαριστούμε, ${name}`,
     hello: (name: string) => `Γεια σας, ${name}`,
     arriveEarly: 'Παρακαλούμε προσέλθετε 10 λεπτά νωρίτερα από το ραντεβού σας.',
@@ -171,5 +179,27 @@ export async function sendReminderEmail(r: ReservationLike) {
     subject: COPY[loc].reminderSubject(day),
     html: shell(loc, r.customerName, COPY[loc].reminderIntro(day), body, { url, label: COPY[loc].manageCta }, r),
     text: `${COPY[loc].greeting(r.customerName)}\n${COPY[loc].reminderIntro(day)}\n\n${COPY[loc].yourAppointments}\n${body}\n\n${COPY[loc].arriveEarly}\n${COPY[loc].manageCta}: ${url}`,
+  });
+}
+
+// ---------- guest: booking cancelled by admin (only for previously-confirmed) ----------
+export async function sendCancelledEmail(r: ReservationLike) {
+  const loc = locOf(r);
+  const c = COPY[loc];
+  const first = [...r.bookings].sort((a, b) => +a.startsAt - +b.startsAt)[0];
+  const day = first ? dateOf(first.startsAt, loc) : '';
+  const body = itinerary(r, loc);
+  const bookUrl = `${getBaseUrl()}/book`;
+  await sendEmail({
+    to: r.customerEmail,
+    subject: c.cancelledSubject(day),
+    html: `<div style="font-family:Georgia,serif;color:#3D2F25;max-width:560px">
+      <h2 style="color:#C2A56B">${esc(c.greeting(r.customerName))}</h2>
+      <p>${c.cancelledIntro(day)}</p>
+      <pre style="font-family:inherit;white-space:pre-wrap;background:#FAF5EC;padding:14px;border:1px solid #E6CF95;text-decoration:line-through;color:#8A7965">${esc(body)}</pre>
+      <p>${c.cancelledOutro}</p>
+      ${button(bookUrl, c.bookAgain)}
+      <p style="color:#8A7965">${c.footer}</p></div>`,
+    text: `${c.greeting(r.customerName)}\n${c.cancelledIntro(day).replace(/<[^>]+>/g, '')}\n\n${body}\n\n${c.cancelledOutro}\n${c.bookAgain}: ${bookUrl}`,
   });
 }
