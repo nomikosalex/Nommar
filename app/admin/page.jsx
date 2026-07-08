@@ -33,6 +33,18 @@ export default function Dashboard() {
     await fetch('/api/admin/bookings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(load);
   };
 
+  const remove = async (id) => {
+    if (!window.confirm('Delete this booking permanently? This cannot be undone.')) return;
+    setReservations((rs) => rs.filter((r) => r.id !== id));
+    await fetch('/api/admin/bookings', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(load);
+  };
+
+  const purgeArchived = async () => {
+    if (!window.confirm('Delete ALL past & cancelled bookings permanently? This cannot be undone.')) return;
+    await fetch('/api/admin/bookings', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ purge: true }) }).catch(() => {});
+    load();
+  };
+
   const now = Date.now();
   const list = reservations || [];
   const upcoming = list.filter((r) => earliest(r) >= now && r.status !== 'CANCELLED');
@@ -54,8 +66,13 @@ export default function Dashboard() {
               {upcoming.length === 0 ? <Empty>No upcoming bookings.</Empty> : upcoming.map((r) => <Card key={r.id} r={r} onStatus={setStatus} />)}
             </Section>
             {rest.length > 0 && (
-              <Section title={`Past & cancelled (${rest.length})`}>
-                {rest.map((r) => <Card key={r.id} r={r} onStatus={setStatus} muted />)}
+              <Section
+                title={`Past & cancelled (${rest.length})`}
+                action={
+                  <FX as="button" onClick={purgeArchived} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#9B4444;background:none;border:1px solid rgba(155,68,68,0.4);padding:7px 14px;cursor:pointer;border-radius:1px;" hover="border-color:#9B4444;background:#F1E9E2;">Clear all</FX>
+                }
+              >
+                {rest.map((r) => <Card key={r.id} r={r} onStatus={setStatus} onDelete={remove} muted />)}
               </Section>
             )}
           </>
@@ -65,10 +82,13 @@ export default function Dashboard() {
   );
 }
 
-function Section({ title, children }) {
+function Section({ title, children, action }) {
   return (
     <section style={css('margin-bottom:40px;')}>
-      <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;margin-bottom:14px;")}>{title}</div>
+      <div style={css('display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;')}>
+        <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;")}>{title}</div>
+        {action}
+      </div>
       <div style={css('display:flex;flex-direction:column;gap:12px;')}>{children}</div>
     </section>
   );
@@ -77,7 +97,7 @@ function Empty({ children }) {
   return <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:18px;color:#8A7965;margin:0;")}>{children}</p>;
 }
 
-function Card({ r, onStatus, muted }) {
+function Card({ r, onStatus, onDelete, muted }) {
   const guests = [];
   for (let g = 1; g <= r.guestCount; g++) {
     const appts = r.bookings.filter((b) => b.guestIndex === g);
@@ -97,6 +117,7 @@ function Card({ r, onStatus, muted }) {
           <span style={css('font-family:var(--font-jost),sans-serif;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:5px 11px;border-radius:2px;' + (STATUS_STYLE[r.status] || ''))}>{r.status}</span>
           {r.status !== 'CONFIRMED' && <FX as="button" onClick={() => onStatus(r.id, 'CONFIRMED')} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#3D2F25;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:8px 14px;cursor:pointer;border-radius:1px;" hover="transform:translateY(-1px);">Confirm</FX>}
           {r.status !== 'CANCELLED' && <FX as="button" onClick={() => onStatus(r.id, 'CANCELLED')} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#9B4444;background:none;border:1px solid rgba(155,68,68,0.4);padding:8px 14px;cursor:pointer;border-radius:1px;" hover="border-color:#9B4444;">Cancel</FX>}
+          {onDelete && <FX as="button" onClick={() => onDelete(r.id)} title="Delete permanently" style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#8A7965;background:none;border:1px solid rgba(138,121,101,0.4);padding:8px 12px;cursor:pointer;border-radius:1px;" hover="border-color:#9B4444;color:#9B4444;">Delete</FX>}
         </div>
       </div>
       <div style={css('display:flex;flex-wrap:wrap;gap:22px;')}>

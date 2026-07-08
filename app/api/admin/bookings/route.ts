@@ -44,3 +44,34 @@ export async function PATCH(request: Request) {
 
   return NextResponse.json({ ok: true, reservation });
 }
+
+// A reservation can be deleted only once it's finished with: cancelled, or every
+// appointment is already in the past. Guards against nuking an active booking.
+function isArchivable(r: { status: string; bookings: { endsAt: Date }[] }, now: Date): boolean {
+  if (r.status === 'CANCELLED') return true;
+  return r.bookings.length > 0 && r.bookings.every((b) => b.endsAt < now);
+}
+
+// DELETE /api/admin/bookings — remove archivable reservations (cascade deletes
+// their Booking rows). Body: { id } for one, or { purge: true } for all past/cancelled.
+export async function DELETE(request: Request) {
+  if (!(await getSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const body = await request.json().catch(() => ({}));
+  const now = new Date();
+
+  if (body?.purge === true) {
+    const all = await prisma.reservation.findMany({ select: { id: true, status: true, bookings: { select: { endsAt: true } } } });
+    const ids = all.filter((r) => isArchivable(r, now)).map((r) => r.id);
+    const del = await prisma.reservation.deleteMany({ where: { id: { in: ids } } });
+    return NextResponse.json({ ok: true, deleted: del.count });
+  }
+
+  const id = Number(body?.id);
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  const r = await prisma.reservation.findUnique({ where: { id }, select: { id: true, status: true, bookings: { select: { endsAt: true } } } });
+  if (!r) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!isArchivable(r, now)) return NextResponse.json({ error: 'Only past or cancelled bookings can be deleted.' }, { status: 400 });
+
+  await prisma.reservation.delete({ where: { id } });
+  return NextResponse.json({ ok: true, deleted: 1 });
+}
