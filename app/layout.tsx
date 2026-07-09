@@ -2,6 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import { Cinzel, Cormorant_Garamond, Jost, Pinyon_Script } from 'next/font/google';
 import './globals.css';
 import SiteChrome from '@/components/SiteChrome';
+import { getBaseUrl } from '@/lib/urls';
+
+// Canonical origin — driven by NEXT_PUBLIC_BASE_URL so it's correct in every
+// environment (localhost / nommar.vercel.app now / nommar.gr after cutover).
+const BASE = getBaseUrl();
+const SOCIAL_IMAGE = `${BASE}/assets/nommar-social.jpg`;
 
 // Self-hosted via next/font (no extra requests, no layout shift). Exposed as CSS
 // variables that the inline styles reference, e.g. font-family:var(--font-jost).
@@ -19,7 +25,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://nommar.gr'),
+  metadataBase: new URL(BASE),
   title: {
     default: 'Nommar — Beauty & Spa by Margarita · Kamari, Santorini',
     template: '%s · Nommar — Beauty & Spa',
@@ -32,7 +38,20 @@ export const metadata: Metadata = {
     siteName: 'Nommar — Beauty & Spa',
     title: 'Nommar — Beauty & Spa by Margarita · Kamari, Santorini',
     description: 'Japanese-inspired head spa, massage, body and facial rituals in Kamari, Santorini.',
-    images: ['/assets/logo-medallion.png'],
+    images: [
+      {
+        url: SOCIAL_IMAGE,
+        width: 1200,
+        height: 1200,
+        alt: 'Nommar — Beauty & Spa by Margarita',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Nommar — Beauty & Spa by Margarita · Kamari, Santorini',
+    description: 'Japanese-inspired head spa, massage, body and facial rituals in Kamari, Santorini.',
+    images: [SOCIAL_IMAGE],
   },
 };
 
@@ -42,7 +61,9 @@ const JSON_LD = {
   '@type': 'HealthAndBeautyBusiness',
   name: 'Nommar — Beauty & Spa by Margarita',
   description: 'Japanese-inspired head spa, massage, body and facial rituals in Kamari, Santorini.',
-  image: '/assets/logo-medallion.png',
+  image: SOCIAL_IMAGE,
+  logo: SOCIAL_IMAGE,
+  url: BASE,
   address: { '@type': 'PostalAddress', addressLocality: 'Kamari', addressRegion: 'Santorini', addressCountry: 'GR' },
   telephone: '+306980133499',
   email: 'info@nommar.gr',
