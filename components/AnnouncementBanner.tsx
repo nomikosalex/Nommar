@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { css } from '@/lib/css';
 import { useLang } from '@/lib/lang';
-import { PROMO } from '@/lib/booking.config';
+import { PROMO, OPENING_DATE } from '@/lib/booking.config';
 
 // Site-wide sale banner. Markets the promo code (the actual discount is applied when
 // the customer enters the code at checkout). Dismissible; re-shows if the code changes.
@@ -30,6 +30,10 @@ export default function AnnouncementBanner() {
 
   useEffect(() => {
     if (!PROMO.active) return;
+    // Don't advertise the promo while the spa is still closed (pre-opening the
+    // OpeningBanner carries the message; this one auto-appears from opening day).
+    const todayAthens = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(new Date());
+    if (todayAthens < OPENING_DATE) return;
     try {
       if (localStorage.getItem(KEY) !== PROMO.code) setShow(true);
     } catch {

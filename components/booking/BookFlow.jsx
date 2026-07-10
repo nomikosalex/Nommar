@@ -6,7 +6,7 @@ import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
 import { PACKAGES, slugify, categoryLabel } from '@/lib/data';
-import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo } from '@/lib/booking.config';
+import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo, OPENING_DATE } from '@/lib/booking.config';
 
 const CATEGORY_ORDER = ['Head Spa', 'Massage', 'Body Treatments', 'Facial Treatments'];
 
@@ -14,6 +14,8 @@ const todayStr = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
+// Earliest bookable day: today, or the spa's opening date if that's later.
+const minBookableStr = () => (OPENING_DATE > todayStr() ? OPENING_DATE : todayStr());
 const fmtDate = (d) => {
   if (!d) return '';
   const [y, m, day] = d.split('-').map(Number);
@@ -265,7 +267,7 @@ export default function BookFlow() {
           {step === 3 && (
             <div>
               <label style={css(labelStyle)}>{t.chooseDate}</label>
-              <input ref={dateInputRef} type="date" min={todayStr()} value={date} onChange={(e) => { setDate(e.target.value); loadSlots(e.target.value); }} style={css(inputStyle + 'max-width:clamp(240px,90vw,320px);cursor:pointer;')} />
+              <input ref={dateInputRef} type="date" min={minBookableStr()} value={date} onChange={(e) => { setDate(e.target.value); loadSlots(e.target.value); }} style={css(inputStyle + 'max-width:clamp(240px,90vw,320px);cursor:pointer;')} />
               {date && (
                 <div style={css('margin-top:26px;')}>
                   <label style={css(labelStyle)}>{t.availableTimes}</label>

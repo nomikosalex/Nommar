@@ -2,7 +2,7 @@ import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { prisma } from './prisma';
 import { Prisma } from './generated/prisma/client';
 import { packageBySlug } from './data';
-import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validatePromo, ceilToGrid } from './booking.config';
+import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validatePromo, ceilToGrid, OPENING_DATE } from './booking.config';
 
 export const TZ = process.env.NEXT_PUBLIC_TZ || 'Europe/Athens';
 
@@ -189,6 +189,8 @@ export function solve(segments: Segment[], ctx: Ctx): Assigned[] | null {
 /** Feasible :00/:30 start times on `dateStr` for the whole request (1–2 guests, chained services). */
 export async function availableStartTimesForRequest(dateStr: string, guests: GuestInput[]) {
   if (guests.length < 1 || guests.length > MAX_GUESTS) return { error: 'Invalid guest count', slots: [] as { time: string; iso: string }[] };
+  // The spa isn't open before OPENING_DATE — no slots exist there.
+  if (dateStr < OPENING_DATE) return { slots: [] as { time: string; iso: string }[] };
   const ctx = await loadContext(dateStr);
   const { chains, error } = resolveChains(guests, ctx.serviceBySlug);
   if (error) return { error, slots: [] };
@@ -226,6 +228,8 @@ export async function createReservationForRequest(input: {
   if (startUtc < new Date()) return { ok: false as const, code: 'past' as const };
 
   const dateStr = formatInTimeZone(startUtc, TZ, 'yyyy-MM-dd');
+  // Server-side opening-date guard (UI enforces it too, but never trust the client).
+  if (dateStr < OPENING_DATE) return { ok: false as const, code: 'unavailable' as const };
   const startMin = Number(formatInTimeZone(startUtc, TZ, 'H')) * 60 + Number(formatInTimeZone(startUtc, TZ, 'm'));
 
   // Run the assign-and-write as a SERIALIZABLE transaction so two requests that
