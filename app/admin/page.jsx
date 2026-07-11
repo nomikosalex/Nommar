@@ -26,11 +26,30 @@ export default function Dashboard() {
       .then((d) => setReservations(d.reservations || []))
       .catch(() => setError('Could not load bookings.'));
   };
-  useEffect(load, []);
+
+  // Load on mount, re-sync when the tab regains focus (guest-side cancellations /
+  // email verifications happen outside this page), and poll as a safety net.
+  useEffect(() => {
+    load();
+    const onFocus = () => document.visibilityState === 'visible' && load();
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    const iv = setInterval(load, 60000);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+      clearInterval(iv);
+    };
+  }, []);
 
   const setStatus = async (id, status) => {
+    // Optimistic update for snappiness, then re-sync with server truth.
     setReservations((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)));
-    await fetch('/api/admin/bookings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(load);
+    try {
+      await fetch('/api/admin/bookings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) });
+    } finally {
+      load();
+    }
   };
 
   const remove = async (id) => {
