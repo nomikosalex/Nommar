@@ -6,7 +6,7 @@ import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
 import { PACKAGES, slugify, categoryLabel } from '@/lib/data';
-import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo, OPENING_DATE } from '@/lib/booking.config';
+import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo, OPENING_DATE, visitDurationMin } from '@/lib/booking.config';
 
 const CATEGORY_ORDER = ['Head Spa', 'Massage', 'Body Treatments', 'Facial Treatments'];
 
@@ -212,7 +212,10 @@ export default function BookFlow() {
   // Persistent action bar: keep the primary action reachable without scrolling.
   const allItems = [];
   for (let g = 0; g < guestCount; g++) (carts[g] || []).forEach((s) => allItems.push(info(s)));
-  const totalMin = allItems.reduce((n, it) => n + (it.durationMin || 0), 0);
+  // Visit duration = longest guest chain (guests run in parallel), incl. grid gaps.
+  const totalMin = visitDurationMin(
+    Array.from({ length: guestCount }, (_, g) => (carts[g] || []).map((s) => info(s).durationMin || 0)),
+  );
   const validateDetails = () => {
     if (!primary.name || !primary.email || !primary.phone || (guestCount === 2 && !g2.name)) { setError(t.completeFields); return false; }
     setError('');
