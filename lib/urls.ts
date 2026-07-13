@@ -8,7 +8,7 @@ export function getBaseUrl(): string {
   return raw.replace(/\/+$/, ''); // no trailing slash
 }
 
-// Public self-service page for a reservation (verify email + cancel).
+// Public self-service page for a reservation (view itinerary + cancel).
 export function reservationUrl(token: string): string {
   return `${getBaseUrl()}/r/${token}`;
 }

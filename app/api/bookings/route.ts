@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createReservationForRequest } from '@/lib/availability';
-import { sendNewBookingEmails } from '@/lib/bookingEmails';
+import { sendSpaNotification } from '@/lib/bookingEmails';
 import { rateLimit, clientIp } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
@@ -63,7 +63,8 @@ export async function POST(request: Request) {
     where: { id: result.reservationId },
     include: { bookings: { include: { service: true, staff: true, room: true } } },
   });
-  if (reservation) sendNewBookingEmails(reservation).catch(() => {});
+  // Guest gets no email at booking time (deliberate) — spa gets the alert.
+  if (reservation) sendSpaNotification(reservation).catch(() => {});
 
   return NextResponse.json({ ok: true, reservationId: result.reservationId }, { status: 201 });
 }

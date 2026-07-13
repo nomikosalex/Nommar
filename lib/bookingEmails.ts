@@ -40,9 +40,6 @@ const dateOf = (d: Date, loc: Locale) =>
 // ---------- localized copy ----------
 const COPY = {
   en: {
-    verifySubject: (day: string) => `Please confirm your booking — ${day}`,
-    verifyIntro: `We've received your booking request. Please confirm your email so we can finalise it.`,
-    verifyCta: 'Confirm my email',
     confirmedSubject: (day: string) => `Your booking is confirmed — ${day}`,
     confirmedIntro: (day: string) => `Your booking for <strong>${day}</strong> is confirmed. We can't wait to welcome you!`,
     reminderSubject: (day: string) => `Appointment reminder — ${day}`,
@@ -60,9 +57,6 @@ const COPY = {
     footer: 'Nommar — Beauty &amp; Spa · Kamari, Santorini',
   },
   gr: {
-    verifySubject: (day: string) => `Επιβεβαιώστε την κράτησή σας — ${day}`,
-    verifyIntro: `Λάβαμε το αίτημα κράτησής σας. Παρακαλούμε επιβεβαιώστε το email σας για να την ολοκληρώσουμε.`,
-    verifyCta: 'Επιβεβαίωση email',
     confirmedSubject: (day: string) => `Η κράτησή σας επιβεβαιώθηκε — ${day}`,
     confirmedIntro: (day: string) => `Η κράτησή σας για <strong>${day}</strong> επιβεβαιώθηκε. Ανυπομονούμε να σας υποδεχθούμε!`,
     reminderSubject: (day: string) => `Υπενθύμιση ραντεβού — ${day}`,
@@ -119,25 +113,15 @@ function shell(loc: Locale, name: string, intro: string, body: string, cta: { ur
     <p style="color:#8A7965">${COPY[loc].footer}</p></div>`;
 }
 
-// ---------- guest: verification (sent on booking) + spa notification ----------
-export async function sendNewBookingEmails(r: ReservationLike) {
-  const loc = locOf(r);
+// ---------- spa notification on new booking (guest gets NO email at booking
+// time — deliberate: bookings are reviewed manually; the guest hears from us
+// when the admin confirms) ----------
+export async function sendSpaNotification(r: ReservationLike) {
   const first = [...r.bookings].sort((a, b) => +a.startsAt - +b.startsAt)[0];
-  const day = first ? dateOf(first.startsAt, loc) : '';
   const dayEn = first ? dateOf(first.startsAt, 'en') : '';
-  const body = itinerary(r, loc);
-  const url = reservationUrl(r.token);
   const spaEmail = process.env.SPA_EMAIL || 'info@nommar.gr';
 
-  const guest = sendEmail({
-    to: r.customerEmail,
-    subject: COPY[loc].verifySubject(day),
-    html: shell(loc, r.customerName, COPY[loc].verifyIntro, body, { url, label: COPY[loc].verifyCta }, r),
-    text: `${COPY[loc].greeting(r.customerName)}\n${COPY[loc].verifyIntro}\n\n${COPY[loc].yourAppointments}\n${body}\n\n${COPY[loc].arriveEarly}\n${COPY[loc].verifyCta}: ${url}`,
-  });
-
-  // Spa notification stays English (internal).
-  const spa = sendEmail({
+  await sendEmail({
     to: spaEmail,
     subject: `New booking — ${dayEn} (${r.guestCount} guest${r.guestCount > 1 ? 's' : ''})`,
     html: `<div style="font-family:Arial,sans-serif;color:#3D2F25">
@@ -148,8 +132,6 @@ export async function sendNewBookingEmails(r: ReservationLike) {
       ${r.notes ? `<p><em>${esc(r.notes)}</em></p>` : ''}</div>`,
     text: `New booking ${dayEn} (${r.guestCount} guest(s)):\n${itinerary(r, 'en')}\n${r.customerName}, ${r.customerEmail}, ${r.customerPhone}${r.promoCode ? '\nPromo: ' + r.promoCode : ''}${r.notes ? '\nNotes: ' + r.notes : ''}`,
   });
-
-  await Promise.allSettled([guest, spa]);
 }
 
 // ---------- guest: booking confirmed by admin ----------

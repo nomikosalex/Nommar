@@ -47,7 +47,6 @@ export default async function ReservationPage({ params }: { params: Promise<{ to
   const view: ReservationView = {
     token: r.token,
     status: r.status as ReservationView['status'],
-    emailVerified: r.emailVerified,
     locale,
     day,
     guests,

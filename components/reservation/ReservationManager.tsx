@@ -9,7 +9,6 @@ type GuestBlock = { label: string; appts: Appt[] };
 export type ReservationView = {
   token: string;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
-  emailVerified: boolean;
   locale: 'en' | 'gr';
   day: string;
   guests: GuestBlock[];
@@ -22,9 +21,6 @@ const COPY = {
     statusPending: 'Awaiting confirmation',
     statusConfirmed: 'Confirmed',
     statusCancelled: 'Cancelled',
-    verifyPrompt: 'Please confirm your email address so we can finalise your booking.',
-    verifyBtn: 'Confirm my email',
-    verifiedMsg: 'Thank you — your email is confirmed.',
     cancelBtn: 'Cancel booking',
     cancelConfirm: 'Cancel this booking? This cannot be undone.',
     cancelledMsg: 'This booking has been cancelled.',
@@ -39,9 +35,6 @@ const COPY = {
     statusPending: 'Σε αναμονή επιβεβαίωσης',
     statusConfirmed: 'Επιβεβαιωμένη',
     statusCancelled: 'Ακυρωμένη',
-    verifyPrompt: 'Παρακαλούμε επιβεβαιώστε το email σας για να ολοκληρώσουμε την κράτησή σας.',
-    verifyBtn: 'Επιβεβαίωση email',
-    verifiedMsg: 'Ευχαριστούμε — το email σας επιβεβαιώθηκε.',
     cancelBtn: 'Ακύρωση κράτησης',
     cancelConfirm: 'Ακύρωση αυτής της κράτησης; Δεν μπορεί να αναιρεθεί.',
     cancelledMsg: 'Αυτή η κράτηση ακυρώθηκε.',
@@ -53,27 +46,16 @@ const COPY = {
 } as const;
 
 const card = 'background:#FFFDF8;border:1px solid rgba(194,165,107,0.35);border-radius:2px;padding:clamp(26px,4vw,44px);max-width:560px;margin:40px auto;font-family:var(--font-jost),sans-serif;color:#3D2F25;';
-const btn = 'display:inline-block;background:#C2A56B;color:#FAF5EC;border:none;border-radius:2px;font-size:14px;letter-spacing:0.04em;padding:12px 26px;cursor:pointer;';
 const ghost = 'display:inline-block;background:transparent;color:#9B4444;border:1px solid #E3B7B7;border-radius:2px;font-size:13px;padding:10px 22px;cursor:pointer;';
 
 export default function ReservationManager({ view }: { view: ReservationView }) {
   const t = COPY[view.locale];
   const [status, setStatus] = useState(view.status);
-  const [verified, setVerified] = useState(view.emailVerified);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const statusLabel = status === 'CONFIRMED' ? t.statusConfirmed : status === 'CANCELLED' ? t.statusCancelled : t.statusPending;
   const statusColor = status === 'CONFIRMED' ? '#3E7C58' : status === 'CANCELLED' ? '#9B4444' : '#8A7965';
-
-  const verify = async () => {
-    setBusy(true); setError('');
-    try {
-      const r = await fetch(`/api/reservations/${view.token}/verify`, { method: 'POST' });
-      if (!r.ok) throw new Error();
-      setVerified(true);
-    } catch { setError(t.error); } finally { setBusy(false); }
-  };
 
   const cancel = async () => {
     if (!window.confirm(t.cancelConfirm)) return;
@@ -109,19 +91,7 @@ export default function ReservationManager({ view }: { view: ReservationView }) 
       {status === 'CANCELLED' ? (
         <p style={{ color: '#9B4444', fontSize: 14 }}>{t.cancelledMsg}</p>
       ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          {!verified && (
-            <button onClick={verify} disabled={busy} style={cssObj(btn)}>{busy ? t.working : t.verifyBtn}</button>
-          )}
-          {verified && (
-            <span style={{ color: '#3E7C58', fontSize: 13 }}>✓ {t.verifiedMsg}</span>
-          )}
-          <button onClick={cancel} disabled={busy} style={cssObj(ghost)}>{t.cancelBtn}</button>
-        </div>
-      )}
-
-      {!verified && status !== 'CANCELLED' && (
-        <p style={{ color: '#8A7965', fontSize: 13, marginTop: 14 }}>{t.verifyPrompt}</p>
+        <button onClick={cancel} disabled={busy} style={cssObj(ghost)}>{busy ? t.working : t.cancelBtn}</button>
       )}
 
       <p style={{ marginTop: 28 }}>
