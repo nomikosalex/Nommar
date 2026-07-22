@@ -106,8 +106,11 @@ model Booking {
   sequenceIndex Int         @default(0) // order within this guest's chain
   startsAt      DateTime
   endsAt        DateTime
-  priceCents    Int? // snapshot at booking time (null until prices are set)
-  discountPct   Int         @default(0)
+  // --- immutable price record, frozen at creation (see runReservationTx) ---
+  priceCents      Int? // GROSS snapshot of the service list price at booking time (null until prices are set)
+  crossSellPct    Int  @default(0) // 2nd+ à-la-carte service per guest: −10% (was `discountPct`)
+  promoPct        Int  @default(0) // promo % ACTUALLY applied, frozen now — never read from PROMO.pct later
+  finalPriceCents Int? // amount charged after BOTH discounts stack (multiplicative); null if priceCents null
 
   @@index([staffId, startsAt])
   @@index([roomId, startsAt])

@@ -3,7 +3,6 @@ import { el, enGB } from 'date-fns/locale';
 import { TZ } from './availability';
 import { sendEmail } from './email';
 import { reservationUrl, getBaseUrl } from './urls';
-import { PROMO } from './booking.config';
 
 type Locale = 'en' | 'gr';
 
@@ -15,6 +14,9 @@ type ApptLike = {
   service: { name: string; durationMin: number };
   staff: { name: string };
   room: { name: string };
+  // frozen price record (wired through; promoPct feeds the promo label below)
+  promoPct: number;
+  finalPriceCents: number | null;
 };
 type ReservationLike = {
   customerName: string;
@@ -97,7 +99,10 @@ function button(url: string, label: string): string {
 
 function promoBlock(r: ReservationLike, loc: Locale): string {
   if (!r.promoCode) return '';
-  return `<p style="color:#8A7965;font-size:13px">${COPY[loc].promoLine(esc(r.promoCode), PROMO.pct)}</p>`;
+  // Use the promo % FROZEN on this reservation's bookings, not the live PROMO.pct
+  // constant — so the label always reflects what was actually applied.
+  const pct = r.bookings[0]?.promoPct ?? 0;
+  return `<p style="color:#8A7965;font-size:13px">${COPY[loc].promoLine(esc(r.promoCode), pct)}</p>`;
 }
 
 // Shared HTML shell for guest emails.

@@ -2,7 +2,7 @@ import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { prisma } from './prisma';
 import { Prisma } from './generated/prisma/client';
 import { packageBySlug } from './data';
-import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validatePromo, ceilToGrid, OPENING_DATE } from './booking.config';
+import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validatePromo, finalPriceCents, ceilToGrid, OPENING_DATE } from './booking.config';
 
 export const TZ = process.env.NEXT_PUBLIC_TZ || 'Europe/Athens';
 
@@ -290,8 +290,10 @@ function runReservationTx(
     const assignment = solve(allSegs, ctx);
     if (!assignment) return { ok: false as const, code: 'unavailable' as const };
 
-    // Only persist a promo code that actually validates (store the canonical code).
-    const promoValid = validatePromo(input.promoCode) > 0;
+    // Freeze the promo percentage for THIS reservation ONCE, from the code that
+    // validated now. Stored per booking (below) so each row is self-contained and
+    // never depends on the mutable PROMO.pct constant afterward.
+    const promoPct = validatePromo(input.promoCode); // 0 if none/invalid, else PROMO.pct
     const reservation = await tx.reservation.create({
       data: {
         status: 'PENDING',
@@ -300,19 +302,22 @@ function runReservationTx(
         customerPhone: input.customer.phone,
         guestCount: input.guests.length,
         notes: input.notes || null,
-        promoCode: promoValid ? PROMO.code : null,
+        promoCode: promoPct > 0 ? PROMO.code : null, // store the canonical code as a label
         locale: input.locale === 'gr' ? 'gr' : 'en',
       },
     });
 
-    // discount: 10% on the 2nd+ à-la-carte service per guest (package components excluded)
+    // Per booking, snapshot the full price record: gross list price, the cross-sell
+    // %, the frozen promo %, and the final charged amount (both discounts stacked
+    // multiplicatively — see finalPriceCents / Option A). Cross-sell: 10% on the
+    // 2nd+ à-la-carte service per guest (package components excluded).
     const alaCarteCount = new Map<number, number>();
     for (const a of assignment) {
       const seg = a.seg;
-      let discountPct = 0;
+      let crossSellPct = 0;
       if (!seg.packageSlug) {
         const n = alaCarteCount.get(seg.guestIndex) || 0;
-        if (n >= 1) discountPct = CROSS_SELL_DISCOUNT_PCT;
+        if (n >= 1) crossSellPct = CROSS_SELL_DISCOUNT_PCT;
         alaCarteCount.set(seg.guestIndex, n + 1);
       }
       await tx.booking.create({
@@ -326,8 +331,11 @@ function runReservationTx(
           sequenceIndex: seg.sequenceIndex,
           startsAt: seg.utcStart,
           endsAt: seg.utcEnd,
-          priceCents: seg.priceCents,
-          discountPct,
+          priceCents: seg.priceCents, // gross snapshot
+          crossSellPct,
+          promoPct,
+          // computed ONCE here and stored; null-safe when priceCents is null
+          finalPriceCents: finalPriceCents(seg.priceCents, crossSellPct, promoPct),
         },
       });
     }
