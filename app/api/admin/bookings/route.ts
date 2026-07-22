@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/auth';
 import { sendConfirmedEmail, sendCancelledEmail } from '@/lib/bookingEmails';
+import { isValidStatus, canTransition, REQUIRES_PAST_VISIT, visitIsOver } from '@/lib/reservationStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,16 +22,34 @@ export async function GET() {
   return NextResponse.json({ reservations });
 }
 
-// PATCH /api/admin/bookings — { id, status } confirm/cancel a whole reservation.
+// PATCH /api/admin/bookings — { id, status } drive a reservation through its
+// lifecycle: PENDING → CONFIRMED → (COMPLETED | NO_SHOW), CANCELLED from
+// PENDING/CONFIRMED. CANCELLED/COMPLETED/NO_SHOW are terminal. COMPLETED/NO_SHOW
+// may only be set once the visit is over. Invalid jumps are rejected here.
 export async function PATCH(request: Request) {
   if (!(await getSession())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id, status } = await request.json().catch(() => ({}));
-  if (!id || !['CONFIRMED', 'CANCELLED', 'PENDING'].includes(status)) {
+  if (!id || !isValidStatus(status)) {
     return NextResponse.json({ error: 'id and a valid status are required' }, { status: 400 });
   }
 
-  const prev = await prisma.reservation.findUnique({ where: { id: Number(id) }, select: { status: true } });
+  const prev = await prisma.reservation.findUnique({
+    where: { id: Number(id) },
+    select: { status: true, bookings: { select: { endsAt: true } } },
+  });
+  if (!prev) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+  // Setting the status it already has is a harmless no-op (idempotent).
+  if (status === prev.status) return NextResponse.json({ ok: true, unchanged: true });
+
+  if (!canTransition(prev.status, status)) {
+    return NextResponse.json({ error: `Cannot change status from ${prev.status} to ${status}.` }, { status: 400 });
+  }
+  if (REQUIRES_PAST_VISIT.includes(status) && !visitIsOver(prev.bookings)) {
+    return NextResponse.json({ error: 'Cannot mark completed / no-show before the appointment has ended.' }, { status: 400 });
+  }
+
   const reservation = await prisma.reservation.update({ where: { id: Number(id) }, data: { status } });
 
   // Email the guest on two transitions:

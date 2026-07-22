@@ -44,11 +44,15 @@ export default async function ReservationPage({ params }: { params: Promise<{ to
     });
   }
 
+  const now = new Date();
+  const past = r.bookings.length > 0 && r.bookings.every((b) => b.endsAt < now);
+
   const view: ReservationView = {
     token: r.token,
     status: r.status as ReservationView['status'],
     locale,
     day,
+    past,
     guests,
   };
 

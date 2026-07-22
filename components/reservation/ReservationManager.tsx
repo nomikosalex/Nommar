@@ -2,15 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { isTerminal } from '@/lib/reservationStatus';
 
 type Appt = { time: string; service: string; dur: number; staff: string; room: string };
 type GuestBlock = { label: string; appts: Appt[] };
 
 export type ReservationView = {
   token: string;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
   locale: 'en' | 'gr';
   day: string;
+  past: boolean; // whole visit is over
   guests: GuestBlock[];
 };
 
@@ -21,6 +23,8 @@ const COPY = {
     statusPending: 'Awaiting confirmation',
     statusConfirmed: 'Confirmed',
     statusCancelled: 'Cancelled',
+    statusCompleted: 'Completed',
+    statusPast: 'This appointment has passed',
     cancelBtn: 'Cancel booking',
     cancelConfirm: 'Cancel this booking? This cannot be undone.',
     cancelledMsg: 'This booking has been cancelled.',
@@ -35,6 +39,8 @@ const COPY = {
     statusPending: 'Σε αναμονή επιβεβαίωσης',
     statusConfirmed: 'Επιβεβαιωμένη',
     statusCancelled: 'Ακυρωμένη',
+    statusCompleted: 'Ολοκληρώθηκε',
+    statusPast: 'Το ραντεβού ολοκληρώθηκε',
     cancelBtn: 'Ακύρωση κράτησης',
     cancelConfirm: 'Ακύρωση αυτής της κράτησης; Δεν μπορεί να αναιρεθεί.',
     cancelledMsg: 'Αυτή η κράτηση ακυρώθηκε.',
@@ -54,8 +60,13 @@ export default function ReservationManager({ view }: { view: ReservationView }) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  const statusLabel = status === 'CONFIRMED' ? t.statusConfirmed : status === 'CANCELLED' ? t.statusCancelled : t.statusPending;
-  const statusColor = status === 'CONFIRMED' ? '#3E7C58' : status === 'CANCELLED' ? '#9B4444' : '#8A7965';
+  const statusLabel =
+    status === 'CONFIRMED' ? t.statusConfirmed
+    : status === 'CANCELLED' ? t.statusCancelled
+    : status === 'COMPLETED' ? t.statusCompleted
+    : status === 'NO_SHOW' ? t.statusPast
+    : t.statusPending;
+  const statusColor = status === 'CONFIRMED' ? '#3E7C58' : status === 'CANCELLED' ? '#9B4444' : status === 'COMPLETED' ? '#3E7C58' : '#8A7965';
 
   const cancel = async () => {
     if (!window.confirm(t.cancelConfirm)) return;
@@ -90,9 +101,11 @@ export default function ReservationManager({ view }: { view: ReservationView }) 
 
       {status === 'CANCELLED' ? (
         <p style={{ color: '#9B4444', fontSize: 14 }}>{t.cancelledMsg}</p>
-      ) : (
+      ) : !isTerminal(status) && !view.past ? (
+        // Only an upcoming, non-terminal booking can be self-cancelled. Past or
+        // COMPLETED/NO_SHOW bookings show just their status label above.
         <button onClick={cancel} disabled={busy} style={cssObj(ghost)}>{busy ? t.working : t.cancelBtn}</button>
-      )}
+      ) : null}
 
       <p style={{ marginTop: 28 }}>
         <Link href="/" style={{ color: '#C2A56B', fontSize: 13, textDecoration: 'none' }}>← {t.backHome}</Link>

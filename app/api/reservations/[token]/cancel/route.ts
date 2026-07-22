@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateLimit, clientIp } from '@/lib/rateLimit';
+import { isTerminal, visitIsOver } from '@/lib/reservationStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +13,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
   if (!rl.ok) return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
 
   const { token } = await params;
-  const reservation = await prisma.reservation.findUnique({ where: { token }, select: { id: true, status: true } });
+  const reservation = await prisma.reservation.findUnique({
+    where: { token },
+    select: { id: true, status: true, bookings: { select: { endsAt: true } } },
+  });
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   if (reservation.status === 'CANCELLED') return NextResponse.json({ ok: true, alreadyCancelled: true });
+  // Don't let a self-service cancel overwrite a set outcome (COMPLETED/NO_SHOW)
+  // or wipe an already-finished visit — protects the analytics record.
+  if (isTerminal(reservation.status) || visitIsOver(reservation.bookings)) {
+    return NextResponse.json({ error: 'This booking can no longer be cancelled.' }, { status: 409 });
+  }
 
   await prisma.reservation.update({ where: { token }, data: { status: 'CANCELLED' } });
   return NextResponse.json({ ok: true });
