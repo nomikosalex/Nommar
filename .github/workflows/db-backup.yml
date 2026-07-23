@@ -1,0 +1,87 @@
+name: DB Backup
+
+# Daily logical backup (schema + data) of the Supabase Postgres database, stored
+# as a workflow artifact. READ-ONLY: this job never writes, migrates, or modifies
+# the database — it only runs pg_dump and uploads the result.
+
+on:
+  schedule:
+    # 00:00 UTC == 03:00 Europe/Athens during EEST (summer — the operating season).
+    # GitHub cron is UTC and has no DST, so in winter (EET) this runs at 02:00 Athens.
+    - cron: '0 0 * * *'
+  workflow_dispatch: {}
+
+# Least privilege: the job only reads the repo and uploads an artifact.
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install postgresql-client-17 (must match Supabase Postgres 17)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          # Add the official PostgreSQL (PGDG) apt repo, then the v17 client.
+          # Ubuntu runners ship an older client by default; pg_dump must be >= the
+          # server major version (17) or it refuses to dump.
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump database
+        env:
+          # Session-pooler connection string (port 5432, IPv4, session mode — safe
+          # for pg_dump). Provided only as an env var, never echoed. GitHub masks
+          # this secret anywhere it would otherwise appear in logs.
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "::error::SUPABASE_DB_URL secret is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          DATE="$(date -u +%F)"
+          FILE="nommar-db-${DATE}.sql"
+
+          # Plain-format dump = schema + data in one restorable file.
+          # --no-owner / --no-privileges → restores cleanly into any database
+          # (Supabase manages roles and ACLs itself).
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" \
+            --no-owner --no-privileges --format=plain > "$FILE"
+
+          # ---- fail-loudly integrity checks (a silent bad backup is worse than none) ----
+          MIN_BYTES=10240   # 10 KB floor; raise as the dataset grows
+
+          # 1) completion marker — pg_dump writes this only on a clean finish,
+          #    so its absence means a truncated / mid-stream failure.
+          if ! grep -q 'PostgreSQL database dump complete' "$FILE"; then
+            echo "::error::Backup is missing its completion marker — dump likely truncated or failed."
+            exit 1
+          fi
+
+          # 2) minimum size — catches empty / near-empty dumps.
+          SIZE="$(stat -c%s "$FILE")"
+          if [ "$SIZE" -lt "$MIN_BYTES" ]; then
+            echo "::error::Backup is only ${SIZE} bytes (< ${MIN_BYTES}) — suspiciously small."
+            exit 1
+          fi
+
+          echo "Backup OK: ${FILE} (${SIZE} bytes)"
+          echo "BACKUP_FILE=${FILE}" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BACKUP_FILE }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 90        # free-plan default max; see README for the 400-day path
+          if-no-files-found: error
