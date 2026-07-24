@@ -22,6 +22,17 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  // /social is a standalone QR / link-in-bio hub: no Nav/Footer/banners, but keep
+  // the language context, and still record first-touch attribution on landing.
+  if (pathname === '/social') {
+    return (
+      <LangProvider>
+        <AttributionCapture />
+        {children}
+      </LangProvider>
+    );
+  }
+
   return (
     <LangProvider>
       <SmoothScroll>
