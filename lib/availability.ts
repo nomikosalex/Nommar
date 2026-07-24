@@ -7,15 +7,18 @@ import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validateProm
 export const TZ = process.env.NEXT_PUBLIC_TZ || 'Europe/Athens';
 
 // ---------- timezone helpers ----------
-function localToUtc(dateStr: string, minutes: number): Date {
+// Exported for reuse by analytics (lib/analytics.ts) so day-boundary + weekday
+// logic is identical to the booking engine's. Weekday convention (Sun=0..Sat=6)
+// matches WorkingHours.weekday.
+export function localToUtc(dateStr: string, minutes: number): Date {
   const hh = String(Math.floor(minutes / 60)).padStart(2, '0');
   const mm = String(minutes % 60).padStart(2, '0');
   return fromZonedTime(`${dateStr}T${hh}:${mm}:00`, TZ);
 }
-function weekdayOf(dateStr: string): number {
+export function weekdayOf(dateStr: string): number {
   return Number(formatInTimeZone(localToUtc(dateStr, 12 * 60), TZ, 'i')) % 7; // 0=Sun..6=Sat
 }
-function nextDayStr(dateStr: string): string {
+export function nextDayStr(dateStr: string): string {
   const [y, m, d] = dateStr.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + 1));
   return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;

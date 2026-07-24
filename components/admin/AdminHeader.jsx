@@ -43,6 +43,7 @@ export default function AdminHeader() {
           <span style={css("font-family:var(--font-cinzel),serif;font-size:18px;letter-spacing:0.12em;font-weight:600;color:#3D2F25;")}>NOMMAR <span style={css('color:#C2A56B;font-size:12px;letter-spacing:0.2em;')}>ADMIN</span></span>
           <nav style={css('display:flex;flex-wrap:wrap;gap:18px;')}>
             {link('/admin', 'Bookings')}
+            {link('/admin/dashboard', locale === 'gr' ? 'Στατιστικά' : 'Dashboard')}
             {link('/admin/calendar', 'Calendar')}
             {link('/admin/schedule', 'Schedule')}
             {link('/admin/services', 'Services')}
