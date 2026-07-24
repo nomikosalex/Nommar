@@ -140,7 +140,17 @@ export default function SocialHub() {
           </FX>
         </section>
 
-        {/* SECONDARY — socials (lighter) */}
+        {/* SECONDARY — book (outlined; clearly tappable but subordinate to the review) */}
+        <FX
+          as={Link}
+          href="/book"
+          style="display:block;text-align:center;font-family:var(--font-jost),sans-serif;font-size:13px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:transparent;border:1px solid #C2A56B;padding:16px 26px;min-height:48px;border-radius:2px;text-decoration:none;transition:background .3s ease,border-color .3s ease,transform .3s ease;margin-bottom:clamp(28px,5vh,40px);"
+          hover="background:rgba(194,165,107,0.1);border-color:#B0862E;transform:translateY(-2px);"
+        >
+          {c.book}
+        </FX>
+
+        {/* TERTIARY — socials (lighter) */}
         <section style={css('margin-bottom:clamp(22px,4vh,32px);')}>
           <h2 style={css('font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;text-align:center;margin:0 0 16px;')}>{c.socials}</h2>
           <div style={css('display:flex;flex-direction:column;gap:12px;')}>
@@ -149,14 +159,10 @@ export default function SocialHub() {
           </div>
         </section>
 
-        {/* footer */}
-        <footer style={css('margin-top:auto;padding-top:14px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 18px;')}>
+        {/* footer — just the back-link home */}
+        <footer style={css('margin-top:auto;padding-top:14px;display:flex;justify-content:center;')}>
           <FX as={Link} href="/" style="font-family:var(--font-jost),sans-serif;font-size:13px;letter-spacing:0.05em;color:#8A7965;text-decoration:none;border-bottom:1px solid rgba(194,165,107,0.5);padding-bottom:2px;" hover="color:#C2A56B;">
             nommar.gr
-          </FX>
-          <span style={css('color:#D8CBB6;')}>·</span>
-          <FX as={Link} href="/book" style="font-family:var(--font-jost),sans-serif;font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:#C2A56B;font-weight:500;text-decoration:none;border-bottom:1px solid rgba(194,165,107,0.5);padding-bottom:2px;" hover="color:#3D2F25;">
-            {c.book}
           </FX>
         </footer>
       </div>
