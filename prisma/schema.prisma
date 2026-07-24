@@ -60,6 +60,12 @@ model Reservation {
   promoCode     String?   // applied sale code, e.g. NOMMAR10
   locale        String    @default("en") // guest's language for emails: en | gr
   reminded24    Boolean   @default(false) // guard so the 24h reminder fires once
+  // First-touch marketing attribution (nullable; direct visits store null).
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
+  referrer      String?   // referring hostname only (no path/query)
+  landingPage   String?   // first path landed on (no query string)
   createdAt     DateTime  @default(now())
   bookings      Booking[]
 }

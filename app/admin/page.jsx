@@ -46,6 +46,7 @@ const COPY = {
     askNoShow: 'Mark this booking as a no-show? (The guest did not attend.)',
     askDelete: 'Delete this booking permanently? This cannot be undone.',
     askPurge: 'Delete ALL past & cancelled bookings permanently? This cannot be undone.',
+    source: 'Source', direct: 'direct',
   },
   gr: {
     heading: 'Κρατήσεις',
@@ -72,8 +73,20 @@ const COPY = {
     askNoShow: 'Να σημειωθεί ως μη προσέλευση; (Ο πελάτης δεν προσήλθε.)',
     askDelete: 'Οριστική διαγραφή αυτής της κράτησης; Δεν αναιρείται.',
     askPurge: 'Οριστική διαγραφή ΟΛΩΝ των παρελθόντων & ακυρωμένων κρατήσεων; Δεν αναιρείται.',
+    source: 'Πηγή', direct: 'απευθείας',
   },
 };
+
+// Human-readable first-touch source: UTM source (+ medium/campaign) → referrer
+// host → "direct". Rendered as JSX text (React escapes it), never as HTML.
+function sourceLabel(r, t) {
+  if (r.utmSource) {
+    const extra = [r.utmMedium, r.utmCampaign].filter(Boolean).join(' · ');
+    return extra ? `${r.utmSource} (${extra})` : r.utmSource;
+  }
+  if (r.referrer) return r.referrer;
+  return t.direct;
+}
 
 const earliest = (r) => Math.min(...r.bookings.map((b) => new Date(b.startsAt).getTime()));
 
@@ -226,6 +239,9 @@ function Card({ r, onStatus, onDelete, muted, t, locale }) {
       </div>
       <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;color:#8A7965;margin-top:12px;")}>
         {r.customerEmail} · {r.customerPhone}{r.promoCode ? ` · ${t.promo} ${r.promoCode}` : ''}{r.notes ? ` · “${r.notes}”` : ''}
+      </div>
+      <div style={css("font-family:var(--font-jost),sans-serif;font-size:11.5px;color:#A8967C;margin-top:4px;")}>
+        {t.source}: {sourceLabel(r, t)}
       </div>
 
       {/* Outcome actions live in their own bar, away from Delete, behind a

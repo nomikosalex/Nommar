@@ -225,6 +225,11 @@ export async function createReservationForRequest(input: {
   notes?: string;
   promoCode?: string;
   locale?: string;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  referrer?: string | null;
+  landingPage?: string | null;
 }) {
   const startUtc = new Date(input.start);
   if (Number.isNaN(startUtc.getTime())) return { ok: false as const, code: 'unavailable' as const };
@@ -274,7 +279,7 @@ function isSerializationConflict(e: unknown): boolean {
 
 // The transactional body, factored out so it can be retried under Serializable.
 function runReservationTx(
-  input: { guests: GuestInput[]; customer: { name: string; email: string; phone: string }; guest2?: { name?: string; email?: string; phone?: string }; notes?: string; promoCode?: string; locale?: string },
+  input: { guests: GuestInput[]; customer: { name: string; email: string; phone: string }; guest2?: { name?: string; email?: string; phone?: string }; notes?: string; promoCode?: string; locale?: string; utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null; referrer?: string | null; landingPage?: string | null },
   dateStr: string,
   startMin: number,
 ) {
@@ -307,6 +312,12 @@ function runReservationTx(
         notes: input.notes || null,
         promoCode: promoPct > 0 ? PROMO.code : null, // store the canonical code as a label
         locale: input.locale === 'gr' ? 'gr' : 'en',
+        // First-touch marketing attribution (already trimmed/capped by the API zod).
+        utmSource: input.utmSource ?? null,
+        utmMedium: input.utmMedium ?? null,
+        utmCampaign: input.utmCampaign ?? null,
+        referrer: input.referrer ?? null,
+        landingPage: input.landingPage ?? null,
       },
     });
 

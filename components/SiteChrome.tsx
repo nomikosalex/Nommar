@@ -11,6 +11,7 @@ import CookieConsent from '@/components/CookieConsent';
 import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
 import FloatingBook from '@/components/FloatingBook';
+import AttributionCapture from '@/components/AttributionCapture';
 
 // Client shell: language context + smooth scroll + persistent chrome around pages.
 export default function SiteChrome({ children }: { children: ReactNode }) {
@@ -28,6 +29,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
           data-motion={CONFIG.enableMotion ? 'on' : 'off'}
           style={css("font-family:var(--font-jost),sans-serif;background:#FAF5EC;color:#3D2F25;min-height:100dvh;overflow-x:hidden;font-weight:300;")}
         >
+          <AttributionCapture />
           <a href="#main" className="skip-link">Skip to content</a>
           <OpeningBanner />
           <AnnouncementBanner />

@@ -25,6 +25,13 @@ const Body = z.object({
   notes: z.string().trim().max(1000).optional(),
   promoCode: z.string().trim().max(40).optional(),
   locale: z.enum(['en', 'gr']).optional(),
+  // Marketing attribution (first-touch, client-captured). Accept string, null, or
+  // omitted; stored as plain strings, never trusted as anything else.
+  utmSource: z.string().trim().max(200).nullish(),
+  utmMedium: z.string().trim().max(200).nullish(),
+  utmCampaign: z.string().trim().max(200).nullish(),
+  referrer: z.string().trim().max(200).nullish(),
+  landingPage: z.string().trim().max(200).nullish(),
 });
 
 const STATUS: Record<string, number> = { invalid: 400, notfound: 404, past: 409, unavailable: 409 };
@@ -52,6 +59,11 @@ export async function POST(request: Request) {
     notes: d.notes,
     promoCode: d.promoCode,
     locale: d.locale,
+    utmSource: d.utmSource,
+    utmMedium: d.utmMedium,
+    utmCampaign: d.utmCampaign,
+    referrer: d.referrer,
+    landingPage: d.landingPage,
   });
 
   if (!result.ok) {

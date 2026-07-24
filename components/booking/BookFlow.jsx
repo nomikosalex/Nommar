@@ -7,6 +7,7 @@ import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
 import { PACKAGES, slugify, categoryLabel } from '@/lib/data';
 import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo, OPENING_DATE, visitDurationMin } from '@/lib/booking.config';
+import { getAttribution } from '@/lib/attribution';
 
 const CATEGORY_ORDER = ['Head Spa', 'Massage', 'Body Treatments', 'Facial Treatments'];
 
@@ -174,7 +175,7 @@ export default function BookFlow() {
     setSubmitting(true);
     setError('');
     try {
-      const body = { start: iso, guests: guestsPayload(), customer: primary, notes, locale: lang };
+      const body = { start: iso, guests: guestsPayload(), customer: primary, notes, locale: lang, ...getAttribution() };
       if (guestCount === 2) body.guest2 = g2;
       if (promoPct > 0) body.promoCode = promo.trim().toUpperCase();
       const r = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
