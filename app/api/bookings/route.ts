@@ -9,7 +9,9 @@ export const dynamic = 'force-dynamic';
 
 const Body = z.object({
   start: z.string().min(1), // ISO UTC instant
-  guests: z.array(z.object({ services: z.array(z.string().min(1)).min(1) })).min(1).max(2),
+  // services may be empty when a duet is selected (the duet itself is the treatment)
+  guests: z.array(z.object({ services: z.array(z.string().min(1)) })).min(1).max(2),
+  duet: z.string().trim().max(80).optional(), // couples package slug (both guests, parallel)
   customer: z.object({
     name: z.string().trim().min(1).max(120),
     email: z.string().trim().email(),
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
     utmCampaign: d.utmCampaign,
     referrer: d.referrer,
     landingPage: d.landingPage,
+    duet: d.duet,
   });
 
   if (!result.ok) {

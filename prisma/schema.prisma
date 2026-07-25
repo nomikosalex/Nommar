@@ -114,6 +114,7 @@ model Booking {
   endsAt        DateTime
   // --- immutable price record, frozen at creation (see runReservationTx) ---
   priceCents      Int? // GROSS snapshot of the service list price at booking time (null until prices are set)
+  packageSlug     String? // set when this row is part of a package/duet (else null); enables package revenue analytics
   crossSellPct    Int  @default(0) // 2nd+ à-la-carte service per guest: −10% (was `discountPct`)
   promoPct        Int  @default(0) // promo % ACTUALLY applied, frozen now — never read from PROMO.pct later
   finalPriceCents Int? // amount charged after BOTH discounts stack (multiplicative); null if priceCents null

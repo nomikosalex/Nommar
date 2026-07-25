@@ -1,7 +1,7 @@
 import { fromZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { prisma } from './prisma';
 import { Prisma } from './generated/prisma/client';
-import { packageBySlug } from './data';
+import { packageBySlug, duetBySlug } from './data';
 import { SLOT_GRID_MIN, MAX_GUESTS, CROSS_SELL_DISCOUNT_PCT, PROMO, validatePromo, finalPriceCents, ceilToGrid, OPENING_DATE } from './booking.config';
 
 export const TZ = process.env.NEXT_PUBLIC_TZ || 'Europe/Athens';
@@ -31,7 +31,13 @@ const overlapsD = (aS: Date, aE: Date, bS: Date, bE: Date) => aS < bE && aE > bS
 
 // ---------- types ----------
 type SvcRow = { id: number; slug: string; name: string; category: string; durationMin: number; priceCents: number | null };
-type Component = SvcRow & { guestIndex: number; sequenceIndex: number; packageSlug: string | null };
+type Component = SvcRow & {
+  guestIndex: number;
+  sequenceIndex: number;
+  packageSlug: string | null;
+  isDuet?: boolean; // couples-package component: counts toward cross-sell base but never discounted
+  priceOverrideCents?: number; // duet split price — overrides the service's own priceCents
+};
 type Segment = Component & { startMin: number; endMin: number; utcStart: Date; utcEnd: Date };
 type GuestInput = { services: string[] };
 
@@ -71,11 +77,42 @@ type Ctx = Awaited<ReturnType<typeof loadContext>>;
 
 // ---------- chain resolution ----------
 // Expand each guest's selected slugs (services or packages) into ordered components.
-function resolveChains(guests: GuestInput[], serviceBySlug: Map<string, SvcRow>): { chains: Component[][]; error?: string } {
+// A `duetSlug`, when present, is a COUPLES package: its service chain is placed on
+// BOTH guests in parallel with the combined price split evenly across the rows,
+// then each guest's own à-la-carte add-ons follow.
+function resolveChains(
+  guests: GuestInput[],
+  serviceBySlug: Map<string, SvcRow>,
+  duetSlug?: string | null,
+): { chains: Component[][]; error?: string } {
+  let duetError: string | undefined;
+  const duet = duetSlug ? duetBySlug(duetSlug) : null;
+  if (duetSlug) {
+    // A duet inherently needs exactly two guests — never trust the client on this.
+    if (!duet || guests.length !== 2 || !Array.isArray(duet.serviceSlugs) || duet.serviceSlugs.length === 0) {
+      return { chains: [], error: 'Invalid duet' };
+    }
+  }
+
   const chains: Component[][] = [];
   guests.forEach((g, gi) => {
     const comps: Component[] = [];
     let seq = 0;
+
+    // Duet components first (same start for both guests), split price evenly.
+    if (duet) {
+      const total = duet.totalPriceCents as number;
+      const perGuest = Math.floor(total / guests.length) + (gi === 0 ? total - Math.floor(total / guests.length) * guests.length : 0);
+      const n = duet.serviceSlugs.length;
+      const perComp = Math.floor(perGuest / n);
+      const compRem = perGuest - perComp * n;
+      duet.serviceSlugs.forEach((cs: string, ci: number) => {
+        const csv = serviceBySlug.get(cs);
+        if (!csv) { duetError = 'Invalid duet'; return; }
+        comps.push({ ...csv, guestIndex: gi + 1, sequenceIndex: seq++, packageSlug: duetSlug!, isDuet: true, priceOverrideCents: perComp + (ci === 0 ? compRem : 0) });
+      });
+    }
+
     for (const slug of g.services) {
       const svc = serviceBySlug.get(slug);
       if (svc) {
@@ -93,8 +130,10 @@ function resolveChains(guests: GuestInput[], serviceBySlug: Map<string, SvcRow>)
     }
     chains.push(comps);
   });
+  if (duetError) return { chains: [], error: duetError };
   const requested = guests.reduce((n, g) => n + g.services.length, 0);
-  if (requested === 0 || chains.some((c) => c.length === 0)) return { chains: [], error: 'No services selected' };
+  // A pure duet has no à-la-carte selections but is still a valid request.
+  if ((!duet && requested === 0) || chains.some((c) => c.length === 0)) return { chains: [], error: 'No services selected' };
   return { chains };
 }
 
@@ -190,12 +229,12 @@ export function solve(segments: Segment[], ctx: Ctx): Assigned[] | null {
 // ---------- public API ----------
 
 /** Feasible :00/:30 start times on `dateStr` for the whole request (1–2 guests, chained services). */
-export async function availableStartTimesForRequest(dateStr: string, guests: GuestInput[]) {
+export async function availableStartTimesForRequest(dateStr: string, guests: GuestInput[], duetSlug?: string | null) {
   if (guests.length < 1 || guests.length > MAX_GUESTS) return { error: 'Invalid guest count', slots: [] as { time: string; iso: string }[] };
   // The spa isn't open before OPENING_DATE — no slots exist there.
   if (dateStr < OPENING_DATE) return { slots: [] as { time: string; iso: string }[] };
   const ctx = await loadContext(dateStr);
-  const { chains, error } = resolveChains(guests, ctx.serviceBySlug);
+  const { chains, error } = resolveChains(guests, ctx.serviceBySlug, duetSlug);
   if (error) return { error, slots: [] };
 
   const now = new Date();
@@ -230,6 +269,7 @@ export async function createReservationForRequest(input: {
   utmCampaign?: string | null;
   referrer?: string | null;
   landingPage?: string | null;
+  duet?: string | null;
 }) {
   const startUtc = new Date(input.start);
   if (Number.isNaN(startUtc.getTime())) return { ok: false as const, code: 'unavailable' as const };
@@ -279,14 +319,14 @@ function isSerializationConflict(e: unknown): boolean {
 
 // The transactional body, factored out so it can be retried under Serializable.
 function runReservationTx(
-  input: { guests: GuestInput[]; customer: { name: string; email: string; phone: string }; guest2?: { name?: string; email?: string; phone?: string }; notes?: string; promoCode?: string; locale?: string; utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null; referrer?: string | null; landingPage?: string | null },
+  input: { guests: GuestInput[]; customer: { name: string; email: string; phone: string }; guest2?: { name?: string; email?: string; phone?: string }; notes?: string; promoCode?: string; locale?: string; utmSource?: string | null; utmMedium?: string | null; utmCampaign?: string | null; referrer?: string | null; landingPage?: string | null; duet?: string | null },
   dateStr: string,
   startMin: number,
 ) {
   return async (tx: Prisma.TransactionClient) => {
     // Reload context inside the transaction (fresh conflicts).
     const ctx = await loadContextTx(tx, dateStr);
-    const { chains, error } = resolveChains(input.guests, ctx.serviceBySlug);
+    const { chains, error } = resolveChains(input.guests, ctx.serviceBySlug, input.duet);
     if (error) return { ok: false as const, code: 'invalid' as const };
 
     const allSegs: Segment[] = [];
@@ -324,7 +364,9 @@ function runReservationTx(
     // Per booking, snapshot the full price record: gross list price, the cross-sell
     // %, the frozen promo %, and the final charged amount (both discounts stacked
     // multiplicatively — see finalPriceCents / Option A). Cross-sell: 10% on the
-    // 2nd+ à-la-carte service per guest (package components excluded).
+    // 2nd+ à-la-carte service per guest. Normal package components are excluded; a
+    // DUET component is a fixed package price (never discounted) but COUNTS toward
+    // the guest's base so their à-la-carte add-ons still earn the cross-sell.
     const alaCarteCount = new Map<number, number>();
     for (const a of assignment) {
       const seg = a.seg;
@@ -333,7 +375,10 @@ function runReservationTx(
         const n = alaCarteCount.get(seg.guestIndex) || 0;
         if (n >= 1) crossSellPct = CROSS_SELL_DISCOUNT_PCT;
         alaCarteCount.set(seg.guestIndex, n + 1);
+      } else if (seg.isDuet) {
+        alaCarteCount.set(seg.guestIndex, (alaCarteCount.get(seg.guestIndex) || 0) + 1);
       }
+      const gross = seg.priceOverrideCents ?? seg.priceCents; // duet split overrides the service price
       await tx.booking.create({
         data: {
           reservationId: reservation.id,
@@ -345,11 +390,12 @@ function runReservationTx(
           sequenceIndex: seg.sequenceIndex,
           startsAt: seg.utcStart,
           endsAt: seg.utcEnd,
-          priceCents: seg.priceCents, // gross snapshot
+          priceCents: gross, // gross snapshot (duet: the split share)
+          packageSlug: seg.packageSlug ?? null,
           crossSellPct,
           promoPct,
           // computed ONCE here and stored; null-safe when priceCents is null
-          finalPriceCents: finalPriceCents(seg.priceCents, crossSellPct, promoPct),
+          finalPriceCents: finalPriceCents(gross, crossSellPct, promoPct),
         },
       });
     }

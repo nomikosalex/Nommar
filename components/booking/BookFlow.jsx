@@ -5,11 +5,23 @@ import Link from 'next/link';
 import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
-import { PACKAGES, slugify, categoryLabel } from '@/lib/data';
+import { PACKAGES, slugify, categoryLabel, localizedPackages, duetBySlug } from '@/lib/data';
 import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo, OPENING_DATE, visitDurationMin } from '@/lib/booking.config';
 import { getAttribution } from '@/lib/attribution';
 
 const CATEGORY_ORDER = ['Head Spa', 'Massage', 'Body Treatments', 'Facial Treatments'];
+// Normal (single-guest) packages only — duets are handled separately so their
+// serviceSlugs never get inferred as a matched package for a lone guest.
+const NORMAL_PACKAGES = PACKAGES.filter((p) => !p.duet);
+
+const eur = (cents, lang) => (cents == null ? '' : new Intl.NumberFormat(lang === 'gr' ? 'el-GR' : 'en-GB', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(cents / 100));
+// Duet couples total, discounted per-row to match the server exactly to the cent.
+const duetTotalCents = (duet, promoPct = 0) => {
+  const total = duet.totalPriceCents;
+  const per = Math.floor(total / 2);
+  const rem = total - per * 2;
+  return Math.round((per + rem) * (1 - promoPct / 100)) + Math.round(per * (1 - promoPct / 100));
+};
 
 const todayStr = () => {
   const d = new Date();
@@ -37,11 +49,14 @@ export default function BookFlow() {
   const { t, lang } = useLang();
   const params = useSearchParams();
   const preselect = params.get('service');
+  const preselectPkg = params.get('package');
 
   const [services, setServices] = useState([]);
   const [step, setStep] = useState(1);
   const [guestCount, setGuestCount] = useState(1);
-  const [carts, setCarts] = useState([[], []]); // slugs per guest
+  const [carts, setCarts] = useState([[], []]); // à-la-carte add-on slugs per guest
+  const [activeDuet, setActiveDuet] = useState(null); // couples package slug, or null
+  const [duetNotice, setDuetNotice] = useState(false); // shown briefly when a duet is cleared
   const [activeGuest, setActiveGuest] = useState(0);
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState(null);
@@ -86,7 +101,12 @@ export default function BookFlow() {
   const STEPS = [t.stepGuests, t.stepServices, t.stepWhen, t.stepDetails, t.stepReview];
 
   const svcBySlug = useMemo(() => new Map(services.map((s) => [s.slug, s])), [services]);
-  const pkgBySlug = useMemo(() => new Map(PACKAGES.map((p) => [slugify(p.name), p])), []);
+  const pkgBySlug = useMemo(() => new Map(NORMAL_PACKAGES.map((p) => [slugify(p.name), p])), []);
+  // Localized packages split into normal journeys vs duets.
+  const localized = useMemo(() => localizedPackages(lang), [lang]);
+  const normalPackages = useMemo(() => localized.filter((p) => !p.duet), [localized]);
+  const duets = useMemo(() => localized.filter((p) => p.duet), [localized]);
+  const activeDuetInfo = useMemo(() => duets.find((d) => d.slug === activeDuet) || null, [duets, activeDuet]);
 
   const info = (slug) => {
     const s = svcBySlug.get(slug);
@@ -101,13 +121,19 @@ export default function BookFlow() {
       .then((r) => r.json())
       .then((d) => {
         setServices(d.services || []);
-        if (preselect && d.services?.some((s) => s.slug === preselect)) {
+        // ?package=<duet-slug> → preselect the couples package with 2 guests.
+        if (preselectPkg && duetBySlug(preselectPkg)) {
+          setGuestCount(2);
+          setActiveDuet(preselectPkg);
+          setCarts([[], []]);
+          setStep(2);
+        } else if (preselect && d.services?.some((s) => s.slug === preselect)) {
           setCarts([[preselect], []]);
           setStep(2);
         }
       })
       .catch(() => setError('Could not load treatments. Please refresh.'));
-  }, [preselect]);
+  }, [preselect, preselectPkg]);
 
   const grouped = useMemo(() => {
     const by = {};
@@ -135,35 +161,49 @@ export default function BookFlow() {
     setIso('');
   };
 
-  // cross-sell suggestions for a guest (short complements, never forming a package)
+  // cross-sell suggestions for a guest (short complements, never forming a package).
+  // Duets are excluded from the inference so a lone service is never nudged toward one.
   const suggestionsFor = (g) => {
     const cart = carts[g];
     if (cart.length === 0 || cart.some((s) => pkgBySlug.has(s))) return [];
     return CROSS_SELL_SLUGS.filter((slug) => svcBySlug.has(slug) && !cart.includes(slug)).filter((slug) => {
       const resulting = [...cart, slug];
-      return !PACKAGES.some((p) => sameSet(resulting, p.serviceSlugs || []));
+      return !NORMAL_PACKAGES.some((p) => sameSet(resulting, p.serviceSlugs || []));
     }).slice(0, 3);
   };
-  // package match: guest's à-la-carte set equals a package's components
+  // package match: guest's à-la-carte set equals a NORMAL package's components (duets excluded).
   const matchedPackage = (g) => {
     const cart = carts[g];
     if (cart.length < 2 || cart.some((s) => pkgBySlug.has(s))) return null;
-    return PACKAGES.find((p) => sameSet(cart, p.serviceSlugs || [])) || null;
+    return NORMAL_PACKAGES.find((p) => sameSet(cart, p.serviceSlugs || [])) || null;
   };
+
+  // ---- duet (couples package) handlers ----
+  const activateDuet = (slug) => {
+    setGuestCount(2);
+    setActiveDuet(slug);
+    setCarts((c) => [c[0] || [], c[1] || []]); // keep any existing picks as add-ons
+    setActiveGuest(0);
+    setDuetNotice(false);
+    setSlots(null); setIso(''); setError('');
+    setStep(2);
+  };
+  const clearDuet = () => { setActiveDuet(null); setSlots(null); setIso(''); };
 
   const loadSlots = (d = date) => {
     if (!d) return;
     setLoadingSlots(true);
     setSlots(null);
     setIso('');
-    fetch('/api/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: d, guests: guestsPayload() }) })
+    fetch('/api/availability', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date: d, guests: guestsPayload(), duet: activeDuet || undefined }) })
       .then((r) => r.json())
       .then((res) => setSlots(res.slots || []))
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
   };
 
-  const cartsReady = () => Array.from({ length: guestCount }, (_, g) => carts[g]).every((c) => c.length > 0);
+  // A duet is itself a complete selection; otherwise each guest needs ≥1 treatment.
+  const cartsReady = () => (activeDuet ? true : Array.from({ length: guestCount }, (_, g) => carts[g]).every((c) => c.length > 0));
 
   const goServices = () => { setActiveGuest(0); setStep(2); };
   const goWhen = () => {
@@ -176,6 +216,7 @@ export default function BookFlow() {
     setError('');
     try {
       const body = { start: iso, guests: guestsPayload(), customer: primary, notes, locale: lang, ...getAttribution() };
+      if (activeDuet) body.duet = activeDuet;
       if (guestCount === 2) body.guest2 = g2;
       if (promoPct > 0) body.promoCode = promo.trim().toUpperCase();
       const r = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -210,12 +251,20 @@ export default function BookFlow() {
 
   const withCart = step >= 2;
 
+  // Per-guest display items = the duet's service(s) (if a duet is active) then add-ons.
+  const guestItems = (g) => {
+    const out = [];
+    if (activeDuetInfo) activeDuetInfo.serviceSlugs.forEach((cs) => { const s = svcBySlug.get(cs); out.push({ slug: 'duet:' + cs, name: s?.name || cs, durationMin: s?.durationMin || activeDuetInfo.durationMin, kind: 'duet' }); });
+    (carts[g] || []).forEach((s) => out.push(info(s)));
+    return out;
+  };
+
   // Persistent action bar: keep the primary action reachable without scrolling.
   const allItems = [];
-  for (let g = 0; g < guestCount; g++) (carts[g] || []).forEach((s) => allItems.push(info(s)));
+  for (let g = 0; g < guestCount; g++) guestItems(g).forEach((it) => allItems.push(it));
   // Visit duration = longest guest chain (guests run in parallel), incl. grid gaps.
   const totalMin = visitDurationMin(
-    Array.from({ length: guestCount }, (_, g) => (carts[g] || []).map((s) => info(s).durationMin || 0)),
+    Array.from({ length: guestCount }, (_, g) => guestItems(g).map((it) => it.durationMin || 0)),
   );
   const validateDetails = () => {
     if (!primary.name || !primary.email || !primary.phone || (guestCount === 2 && !g2.name)) { setError(t.completeFields); return false; }
@@ -241,7 +290,11 @@ export default function BookFlow() {
               <h2 style={css(heading + 'font-size:clamp(22px,2.6vw,30px);margin:0 0 26px;')}>{t.howManyGuests}</h2>
               <div style={css('display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:460px;margin:0 auto;')}>
                 {[1, 2].map((n) => (
-                  <FX key={n} as="button" onClick={() => { setGuestCount(n); setCarts((c) => [c[0] || [], n === 2 ? c[1] || [] : []]); goServices(); }} style={card + 'cursor:pointer;padding:34px 18px;display:flex;flex-direction:column;align-items:center;gap:10px;transition:transform .35s ease,border-color .35s ease;'} hover="transform:translateY(-4px);border-color:rgba(194,165,107,0.6);">
+                  <FX key={n} as="button" onClick={() => {
+                    if (n === 1 && activeDuet) { setActiveDuet(null); setDuetNotice(true); setCarts([[], []]); }
+                    else { setDuetNotice(false); setCarts((c) => [c[0] || [], n === 2 ? c[1] || [] : []]); }
+                    setGuestCount(n); goServices();
+                  }} style={card + 'cursor:pointer;padding:34px 18px;display:flex;flex-direction:column;align-items:center;gap:10px;transition:transform .35s ease,border-color .35s ease;'} hover="transform:translateY(-4px);border-color:rgba(194,165,107,0.6);">
                     <span style={css("font-family:var(--font-cormorant),serif;font-size:44px;color:#C2A56B;line-height:1;")}>{n}</span>
                     <span style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;color:#3D2F25;")}>{n === 1 ? t.onePerson : t.twoPeople}</span>
                   </FX>
@@ -253,17 +306,27 @@ export default function BookFlow() {
           {/* STEP 2 — treatments */}
           {step === 2 && (
             <div>
+              {duetNotice && (
+                <div style={css('background:#FAF5EC;border:1px solid #E6CF95;border-radius:2px;padding:12px 16px;margin-bottom:20px;font-family:var(--font-jost),sans-serif;font-size:13px;color:#9A7B2E;')}>{t.duetClearedNotice}</div>
+              )}
               {guestCount === 2 && (
                 <div style={css('display:flex;gap:10px;margin-bottom:22px;')}>
                   {[0, 1].map((g) => (
                     <FX key={g} as="button" onClick={() => setActiveGuest(g)} style={'flex:1;font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;padding:12px;cursor:pointer;border-radius:2px;' + (activeGuest === g ? 'background:linear-gradient(135deg,#E6CF95,#C2A56B);color:#3D2F25;border:1px solid #C2A56B;' : 'background:#FFFDF8;color:#8A7965;border:1px solid rgba(194,165,107,0.4);')} hover="border-color:#C2A56B;">
-                      {t.guest} {g + 1}{carts[g].length ? ` · ${carts[g].length}` : ''}
+                      {t.guest} {g + 1}{(guestItems(g).length) ? ` · ${guestItems(g).length}` : ''}
                     </FX>
                   ))}
                 </div>
               )}
 
-              <ServicePicker t={t} grouped={grouped} packages={PACKAGES} cart={carts[activeGuest]} pkgBySlug={pkgBySlug} onToggle={(slug) => toggle(activeGuest, slug)} onPackage={(slug) => setPackage(activeGuest, slug)} suggestions={suggestionsFor(activeGuest)} svcBySlug={svcBySlug} matched={matchedPackage(activeGuest)} />
+              <ServicePicker
+                t={t} lang={lang} grouped={grouped} packages={normalPackages} duets={duets}
+                cart={carts[activeGuest]} pkgBySlug={pkgBySlug} guestCount={guestCount}
+                activeDuet={activeDuet} activeDuetInfo={activeDuetInfo}
+                onToggle={(slug) => toggle(activeGuest, slug)} onPackage={(slug) => setPackage(activeGuest, slug)}
+                onActivateDuet={activateDuet} onSelectDuet={(slug) => { setActiveDuet(slug); setSlots(null); setIso(''); }} onClearDuet={clearDuet}
+                suggestions={suggestionsFor(activeGuest)} svcBySlug={svcBySlug} matched={matchedPackage(activeGuest)}
+              />
             </div>
           )}
 
@@ -367,7 +430,7 @@ export default function BookFlow() {
           )}
         </div>
 
-        {withCart && <CartPanel t={t} guestCount={guestCount} carts={carts} info={info} />}
+        {withCart && <CartPanel t={t} lang={lang} guestCount={guestCount} guestItems={guestItems} duet={activeDuetInfo} promoPct={promoPct} />}
       </div>
 
       {step >= 2 && (
@@ -436,7 +499,7 @@ function Stepper({ steps, step }) {
   );
 }
 
-function ServicePicker({ t, grouped, packages, cart, pkgBySlug, onToggle, onPackage, suggestions, svcBySlug, matched }) {
+function ServicePicker({ t, lang, grouped, packages, duets, cart, pkgBySlug, guestCount, activeDuet, onToggle, onPackage, onActivateDuet, onSelectDuet, onClearDuet, suggestions, svcBySlug, matched }) {
   const inCart = (slug) => cart.includes(slug);
   const hasPackage = cart.some((s) => pkgBySlug.has(s));
   return (
@@ -467,6 +530,18 @@ function ServicePicker({ t, grouped, packages, cart, pkgBySlug, onToggle, onPack
           ))}
         </div>
       </div>
+
+      {/* For two — couples (duet) packages: always visible; actionable when 1 guest */}
+      {duets && duets.length > 0 && (
+        <div style={css('margin:26px 0 8px;')}>
+          <div style={css(eyebrow + 'margin-bottom:14px;')}>{t.duetsSection}</div>
+          <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px;')}>
+            {duets.map((d) => (
+              <DuetCard key={d.slug} t={t} lang={lang} d={d} guestCount={guestCount} selected={activeDuet === d.slug} onActivate={() => onActivateDuet(d.slug)} onSelect={() => onSelectDuet(d.slug)} onClear={onClearDuet} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {suggestions.length > 0 && (
         <div style={css('margin-top:24px;background:#FFFDF8;border:1px dashed rgba(194,165,107,0.5);border-radius:2px;padding:18px 20px;')}>
@@ -500,6 +575,38 @@ function Row({ t, name, duration, selected, disabled, onClick }) {
   );
 }
 
+function DuetCard({ t, lang, d, guestCount, selected, onActivate, onSelect, onClear }) {
+  const price = eur(d.totalPriceCents, lang);
+  const meta = `${d.durationMin} ${t.minShort} · ${t.duetForTwoSuffix}${price ? ' · ' + price : ''}`;
+  const btn = 'font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;padding:9px 15px;cursor:pointer;border-radius:1px;';
+  return (
+    <div style={css('background:#FFFDF8;border-radius:2px;padding:15px 16px;' + (selected ? 'border:1px solid #C2A56B;' : 'border:1px solid rgba(194,165,107,0.3);'))}>
+      <div style={css('display:flex;align-items:flex-start;justify-content:space-between;gap:10px;')}>
+        <span>
+          <span style={css('display:block;font-family:var(--font-cinzel),serif;font-size:15px;color:#3D2F25;')}>{d.name}</span>
+          <span style={css('font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.1em;color:#C2A56B;')}>{meta}</span>
+        </span>
+        {d.badge && <span style={css('flex-shrink:0;font-family:var(--font-jost),sans-serif;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:#8A7965;background:#F3EADA;border:1px solid rgba(194,165,107,0.4);padding:3px 8px;border-radius:2px;')}>{d.badge}</span>}
+      </div>
+      <div style={css('margin-top:12px;')}>
+        {guestCount === 1 ? (
+          <div style={css('display:flex;flex-wrap:wrap;align-items:center;gap:10px;')}>
+            <span style={css('font-family:var(--font-cormorant),serif;font-style:italic;font-size:15px;color:#8A7965;')}>{t.duetForTwo}</span>
+            <FX as="button" onClick={onActivate} style={btn + 'color:#3D2F25;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;min-height:44px;'} hover="transform:translateY(-1px);">{t.duetBookForTwo}</FX>
+          </div>
+        ) : selected ? (
+          <div style={css('display:flex;align-items:center;gap:12px;')}>
+            <span style={css('font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#C2A56B;')}>✓ {t.duetSelected}</span>
+            <FX as="button" onClick={onClear} style={btn + 'color:#8A7965;background:transparent;border:1px solid rgba(194,165,107,0.45);'} hover="border-color:#9B4444;color:#9B4444;">{t.duetChange}</FX>
+          </div>
+        ) : (
+          <FX as="button" onClick={onSelect} style={btn + 'color:#3D2F25;background:transparent;border:1px solid #C2A56B;min-height:44px;'} hover="background:rgba(194,165,107,0.1);">+ {t.add}</FX>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Field({ label, value, onChange, type = 'text', id, autoComplete }) {
   return (
     <div>
@@ -509,28 +616,53 @@ function Field({ label, value, onChange, type = 'text', id, autoComplete }) {
   );
 }
 
-function CartPanel({ t, guestCount, carts, info }) {
+function CartPanel({ t, lang, guestCount, guestItems, duet, promoPct }) {
+  const hasAddOns = Array.from({ length: guestCount }, (_, g) => (guestItems(g) || []).some((it) => it.kind !== 'duet')).some(Boolean);
   return (
     <aside style={css(card + 'padding:24px 24px 26px;position:sticky;top:calc(90px + env(safe-area-inset-top));max-height:calc(100dvh - 110px);overflow-y:auto;')}>
       <div style={css(eyebrow + 'margin-bottom:16px;')}>{t.yourBooking}</div>
-      {Array.from({ length: guestCount }, (_, g) => {
-        const items = carts[g].map(info);
+
+      {/* Couples package as a single line with the (promo-aware) total */}
+      {duet && (
+        <div style={css('background:#F3EADA;border:1px solid rgba(194,165,107,0.4);border-radius:2px;padding:12px 14px;margin-bottom:16px;')}>
+          <div style={css('display:flex;justify-content:space-between;align-items:baseline;gap:10px;')}>
+            <span style={css('font-family:var(--font-cinzel),serif;font-size:14px;color:#3D2F25;')}>{duet.name}</span>
+            {duet.totalPriceCents != null && (
+              <span style={css('font-family:var(--font-cormorant),serif;font-size:17px;color:#3D2F25;white-space:nowrap;')}>
+                {promoPct > 0 && <span style={css('color:#A8967C;text-decoration:line-through;font-size:14px;margin-right:6px;')}>{eur(duet.totalPriceCents, lang)}</span>}
+                {eur(duetTotalCents(duet, promoPct), lang)}
+              </span>
+            )}
+          </div>
+          <span style={css('font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.1em;color:#C2A56B;')}>{t.duetForTwoSuffix} · {duet.durationMin} {t.minShort}{promoPct > 0 ? ` · −${promoPct}%` : ''}</span>
+        </div>
+      )}
+
+      {(duet ? hasAddOns : true) && Array.from({ length: guestCount }, (_, g) => {
+        const items = (guestItems(g) || []).filter((it) => it.kind !== 'duet'); // duet shown above
+        let alaCarteIdx = duet ? 1 : 0; // duet counts as the guest's 1st treatment for cross-sell
         return (
-          <div key={g} style={css('margin-bottom:18px;')}>
+          <div key={g} style={css('margin-bottom:16px;')}>
             {guestCount === 2 && <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:8px;")}>{t.guest} {g + 1}</div>}
-            {items.length === 0 && <div style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:15px;color:#A8967C;")}>—</div>}
-            {items.map((it, idx) => (
-              <div key={it.slug} style={css('display:flex;justify-content:space-between;gap:10px;font-family:var(--font-jost),sans-serif;font-size:13px;color:#3D2F25;line-height:1.9;')}>
-                <span>{it.name} <span style={css('color:#A8967C;')}>· {it.durationMin}{t.minShort}</span>{it.kind === 'service' && idx > 0 ? <span style={css('color:#C2A56B;')}> −{CROSS_SELL_DISCOUNT_PCT}%</span> : null}</span>
-              </div>
-            ))}
+            {items.length === 0 && !duet && <div style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:15px;color:#A8967C;")}>—</div>}
+            {items.map((it) => {
+              const crossSell = it.kind === 'service' && alaCarteIdx++ >= 1;
+              return (
+                <div key={it.slug} style={css('display:flex;justify-content:space-between;gap:10px;font-family:var(--font-jost),sans-serif;font-size:13px;color:#3D2F25;line-height:1.9;')}>
+                  <span>{it.name} <span style={css('color:#A8967C;')}>· {it.durationMin}{t.minShort}</span>{crossSell ? <span style={css('color:#C2A56B;')}> −{CROSS_SELL_DISCOUNT_PCT}%</span> : null}</span>
+                </div>
+              );
+            })}
           </div>
         );
       })}
+
       <div style={css('height:1px;background:rgba(194,165,107,0.3);margin:6px 0 14px;')} />
       <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
         <span style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;")}>{t.total}</span>
-        <span style={css("font-family:var(--font-cormorant),serif;font-size:18px;font-style:italic;color:#C2A56B;")}>{t.priceTbd}</span>
+        <span style={css("font-family:var(--font-cormorant),serif;font-size:18px;font-style:italic;color:#C2A56B;")}>
+          {duet ? (hasAddOns ? `${eur(duetTotalCents(duet, promoPct), lang)} + ${t.priceTbd.toLowerCase()}` : eur(duetTotalCents(duet, promoPct), lang)) : t.priceTbd}
+        </span>
       </div>
     </aside>
   );
