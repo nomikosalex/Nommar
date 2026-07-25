@@ -4,6 +4,7 @@ import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import AdminHeader from '@/components/admin/AdminHeader';
 import { useAdminLocale } from '@/lib/useAdminLocale';
+import { formatEur } from '@/lib/money';
 import { canTransition, visitIsOver } from '@/lib/reservationStatus';
 
 const TZ = 'Europe/Athens';
@@ -217,6 +218,7 @@ function Card({ r, onStatus, onDelete, muted, t, locale }) {
         <div style={css("font-family:var(--font-jost),sans-serif;font-size:14px;color:#3D2F25;font-weight:500;")}>
           {dt.format(new Date(earliest(r)))}
           <span style={css('color:#8A7965;font-weight:300;')}> · {r.guestCount === 2 ? t.twoGuests : t.oneGuest}</span>
+          {(() => { const priced = r.bookings.filter((b) => b.finalPriceCents != null); if (!priced.length) return null; const sum = priced.reduce((s, b) => s + b.finalPriceCents, 0); return <span style={css('color:#C2A56B;')}> · {formatEur(sum, locale)}</span>; })()}
         </div>
         <div style={css('display:flex;align-items:center;gap:10px;')}>
           <span style={css('font-family:var(--font-jost),sans-serif;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;padding:5px 11px;border-radius:2px;' + (STATUS_STYLE[r.status] || ''))}>{t.status[r.status] || r.status}</span>
@@ -231,7 +233,7 @@ function Card({ r, onStatus, onDelete, muted, t, locale }) {
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12.5px;color:#3D2F25;font-weight:500;margin-bottom:4px;")}>{gr.label}</div>
             {gr.appts.map((a) => (
               <div key={a.id} style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:12.5px;color:#8A7965;line-height:1.7;")}>
-                {tm.format(new Date(a.startsAt))} · {a.service.name} ({a.service.durationMin}′) · {a.staff.name} · {a.room.name}
+                {tm.format(new Date(a.startsAt))} · {a.service.name} ({a.service.durationMin}′) · {a.staff.name} · {a.room.name}{a.finalPriceCents != null ? <span style={css('color:#C2A56B;')}> · {formatEur(a.finalPriceCents, locale)}</span> : null}
               </div>
             ))}
           </div>

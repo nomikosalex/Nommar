@@ -3,6 +3,7 @@ import { el, enGB } from 'date-fns/locale';
 import { TZ } from './availability';
 import { sendEmail } from './email';
 import { reservationUrl, getBaseUrl } from './urls';
+import { formatEur } from './money';
 
 type Locale = 'en' | 'gr';
 
@@ -88,7 +89,17 @@ function itinerary(r: ReservationLike, loc: Locale): string {
     if (appts.length === 0) continue;
     const label = g === 1 ? r.customerName : appts[0].guestName || `Guest ${g}`;
     out.push(`${label}:`);
-    for (const a of appts) out.push(`  • ${at(a.startsAt)} — ${a.service.name} (${a.service.durationMin}′) · ${a.staff.name} · ${a.room.name}`);
+    for (const a of appts) {
+      const price = a.finalPriceCents != null ? ` · ${formatEur(a.finalPriceCents, loc)}` : '';
+      out.push(`  • ${at(a.startsAt)} — ${a.service.name} (${a.service.durationMin}′) · ${a.staff.name} · ${a.room.name}${price}`);
+    }
+  }
+  // Total, from the frozen per-booking prices (already reflects cross-sell + promo).
+  const priced = r.bookings.filter((b) => b.finalPriceCents != null);
+  if (priced.length) {
+    const total = priced.reduce((s, b) => s + (b.finalPriceCents as number), 0);
+    out.push('');
+    out.push(`${loc === 'gr' ? 'Σύνολο' : 'Total'}: ${formatEur(total, loc)}`);
   }
   return out.join('\n');
 }

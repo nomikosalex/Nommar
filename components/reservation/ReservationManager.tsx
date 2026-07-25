@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { isTerminal } from '@/lib/reservationStatus';
+import { formatEur } from '@/lib/money';
 
-type Appt = { time: string; service: string; dur: number; staff: string; room: string };
+type Appt = { time: string; service: string; dur: number; staff: string; room: string; priceCents: number | null };
 type GuestBlock = { label: string; appts: Appt[] };
 
 export type ReservationView = {
@@ -25,6 +26,7 @@ const COPY = {
     statusCancelled: 'Cancelled',
     statusCompleted: 'Completed',
     statusPast: 'This appointment has passed',
+    totalLabel: 'Total',
     cancelBtn: 'Cancel booking',
     cancelConfirm: 'Cancel this booking? This cannot be undone.',
     cancelledMsg: 'This booking has been cancelled.',
@@ -41,6 +43,7 @@ const COPY = {
     statusCancelled: 'Ακυρωμένη',
     statusCompleted: 'Ολοκληρώθηκε',
     statusPast: 'Το ραντεβού ολοκληρώθηκε',
+    totalLabel: 'Σύνολο',
     cancelBtn: 'Ακύρωση κράτησης',
     cancelConfirm: 'Ακύρωση αυτής της κράτησης; Δεν μπορεί να αναιρεθεί.',
     cancelledMsg: 'Αυτή η κράτηση ακυρώθηκε.',
@@ -90,10 +93,23 @@ export default function ReservationManager({ view }: { view: ReservationView }) 
           {g.appts.map((a, ai) => (
             <div key={ai} style={{ fontSize: 14, color: '#6E5E50', padding: '3px 0' }}>
               {a.time} — {a.service} ({a.dur}′) · {a.staff} · {a.room}
+              {a.priceCents != null ? <span style={{ color: '#C2A56B' }}> · {formatEur(a.priceCents, view.locale)}</span> : null}
             </div>
           ))}
         </div>
       ))}
+
+      {(() => {
+        const priced = view.guests.flatMap((g) => g.appts).filter((a) => a.priceCents != null);
+        if (!priced.length) return null;
+        const total = priced.reduce((s, a) => s + (a.priceCents as number), 0);
+        return (
+          <p style={{ fontSize: 14, color: '#3D2F25', margin: '4px 0 0', display: 'flex', justifyContent: 'space-between', maxWidth: 320 }}>
+            <span style={{ letterSpacing: '0.14em', textTransform: 'uppercase', fontSize: 11, color: '#8A7965' }}>{t.totalLabel}</span>
+            <strong style={{ fontWeight: 500 }}>{formatEur(total, view.locale)}</strong>
+          </p>
+        );
+      })()}
 
       <p style={{ fontStyle: 'italic', color: '#6E5E50', fontSize: 14, margin: '18px 0 24px' }}>{t.arriveEarly}</p>
 

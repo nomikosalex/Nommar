@@ -40,6 +40,7 @@ export default async function ReservationPage({ params }: { params: Promise<{ to
         dur: a.service.durationMin,
         staff: a.staff.name,
         room: a.room.name,
+        priceCents: a.finalPriceCents, // frozen — never recomputed
       })),
     });
   }

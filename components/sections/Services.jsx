@@ -1,19 +1,26 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
-import { CONFIG } from '@/lib/site.config';
 import Placeholder from '@/components/Placeholder';
 import { Reveal } from '@/components/animations/Reveal';
-import { localizedCategories, localizedAromas, priceLabel } from '@/lib/data';
+import { localizedCategories, localizedAromas } from '@/lib/data';
+import { formatEur } from '@/lib/money';
 
 export default function Services() {
   const { t, lang } = useLang();
   const router = useRouter();
   const [aroma, setAroma] = useState(0);
-  const price = priceLabel(CONFIG.priceMode, lang);
+  const [priceMap, setPriceMap] = useState({}); // slug → catalog priceCents
+  useEffect(() => {
+    fetch('/api/services').then((r) => r.json()).then((d) => {
+      const m = {};
+      (d.services || []).forEach((s) => { m[s.slug] = s.priceCents; });
+      setPriceMap(m);
+    }).catch(() => {});
+  }, []);
   const categories = localizedCategories(lang);
   const aromas = localizedAromas(lang);
   const book = (slug) => router.push('/book?service=' + slug);
@@ -122,7 +129,7 @@ export default function Services() {
                     <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
                       <div style={css('display:flex;flex-direction:column;')}>
                         <span style={css("font-family:var(--font-jost),sans-serif;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;margin-bottom:3px;")}>{t.investment}</span>
-                        <span style={css("font-family:var(--font-cormorant),serif;font-size:24px;font-weight:600;color:#C2A56B;line-height:1;")}>{price}</span>
+                        <span style={css("font-family:var(--font-cormorant),serif;font-size:24px;font-weight:600;color:#C2A56B;line-height:1;")}>{formatEur(priceMap[svc.slug], lang) ?? t.priceTbd}</span>
                       </div>
                       <FX as="button" onClick={() => book(svc.slug)} style="font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.18em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:transparent;border:1px solid #C2A56B;padding:11px 20px;cursor:pointer;border-radius:1px;transition:background .35s ease,color .35s ease;" hover="background:#C2A56B;color:#FAF5EC;">{t.book}</FX>
                     </div>

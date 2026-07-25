@@ -1,20 +1,26 @@
 'use client';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
-import { CONFIG } from '@/lib/site.config';
 import Placeholder from '@/components/Placeholder';
 import { Reveal } from '@/components/animations/Reveal';
-import { localizedPackages, priceLabel } from '@/lib/data';
-
-const eur = (cents, lang) => new Intl.NumberFormat(lang === 'gr' ? 'el-GR' : 'en-GB', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(cents / 100);
+import { localizedPackages } from '@/lib/data';
+import { formatEur, packagePriceCents } from '@/lib/money';
 
 export default function Packages() {
   const { t, lang } = useLang();
   const router = useRouter();
-  const price = priceLabel(CONFIG.priceMode, lang);
   const packages = localizedPackages(lang);
+  const [priceMap, setPriceMap] = useState({}); // slug → catalog priceCents (for normal-package sums)
+  useEffect(() => {
+    fetch('/api/services').then((r) => r.json()).then((d) => {
+      const m = {};
+      (d.services || []).forEach((s) => { m[s.slug] = s.priceCents; });
+      setPriceMap(m);
+    }).catch(() => {});
+  }, []);
 
   return (
     <div style={css('background:#F3EADA;')}>
@@ -52,8 +58,8 @@ export default function Packages() {
                 <div style={css('height:1px;background:rgba(194,165,107,0.3);margin-bottom:20px;')} />
                 <div style={css('display:flex;align-items:center;justify-content:space-between;gap:14px;')}>
                   <div style={css('display:flex;flex-direction:column;')}>
-                    <span style={css("font-family:var(--font-jost),sans-serif;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;margin-bottom:3px;")}>{pkg.duet ? t.duetForTwo : t.journeyFrom}</span>
-                    <span style={css("font-family:var(--font-cormorant),serif;font-size:27px;font-weight:600;color:#C2A56B;line-height:1;")}>{pkg.duet && pkg.totalPriceCents != null ? eur(pkg.totalPriceCents, lang) : price}</span>
+                    <span style={css("font-family:var(--font-jost),sans-serif;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;margin-bottom:3px;")}>{pkg.duet ? t.duetForTwo : t.total}</span>
+                    <span style={css("font-family:var(--font-cormorant),serif;font-size:27px;font-weight:600;color:#C2A56B;line-height:1;")}>{formatEur(packagePriceCents(pkg, priceMap), lang) ?? t.priceTbd}</span>
                   </div>
                   <FX as="button" onClick={() => router.push(pkg.duet ? '/book?package=' + pkg.slug : '/book?service=' + pkg.slug)} style="font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:13px 26px;cursor:pointer;border-radius:1px;box-shadow:0 8px 22px -8px rgba(194,165,107,0.6);transition:transform .35s ease;" hover="transform:translateY(-2px);">{t.reserve}</FX>
                 </div>

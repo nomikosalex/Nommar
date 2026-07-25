@@ -6,22 +6,14 @@ import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
 import { PACKAGES, slugify, categoryLabel, localizedPackages, duetBySlug } from '@/lib/data';
-import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo, OPENING_DATE, visitDurationMin } from '@/lib/booking.config';
+import { CROSS_SELL_SLUGS, CROSS_SELL_DISCOUNT_PCT, MAX_GUESTS, PROMO, validatePromo, OPENING_DATE, visitDurationMin, finalPriceCents } from '@/lib/booking.config';
 import { getAttribution } from '@/lib/attribution';
+import { formatEur as eur } from '@/lib/money';
 
 const CATEGORY_ORDER = ['Head Spa', 'Massage', 'Body Treatments', 'Facial Treatments'];
 // Normal (single-guest) packages only — duets are handled separately so their
 // serviceSlugs never get inferred as a matched package for a lone guest.
 const NORMAL_PACKAGES = PACKAGES.filter((p) => !p.duet);
-
-const eur = (cents, lang) => (cents == null ? '' : new Intl.NumberFormat(lang === 'gr' ? 'el-GR' : 'en-GB', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(cents / 100));
-// Duet couples total, discounted per-row to match the server exactly to the cent.
-const duetTotalCents = (duet, promoPct = 0) => {
-  const total = duet.totalPriceCents;
-  const per = Math.floor(total / 2);
-  const rem = total - per * 2;
-  return Math.round((per + rem) * (1 - promoPct / 100)) + Math.round(per * (1 - promoPct / 100));
-};
 
 const todayStr = () => {
   const d = new Date();
@@ -102,11 +94,56 @@ export default function BookFlow() {
 
   const svcBySlug = useMemo(() => new Map(services.map((s) => [s.slug, s])), [services]);
   const pkgBySlug = useMemo(() => new Map(NORMAL_PACKAGES.map((p) => [slugify(p.name), p])), []);
+  const priceOf = (slug) => svcBySlug.get(slug)?.priceCents ?? null; // catalog price of a service
+  // Gross catalog total of a normal package = sum of its components (null if any unpriced).
+  const pkgGross = (pkg) => { let s = 0; for (const cs of pkg.serviceSlugs || []) { const c = priceOf(cs); if (c == null) return null; s += c; } return s; };
   // Localized packages split into normal journeys vs duets.
   const localized = useMemo(() => localizedPackages(lang), [lang]);
   const normalPackages = useMemo(() => localized.filter((p) => !p.duet), [localized]);
   const duets = useMemo(() => localized.filter((p) => p.duet), [localized]);
   const activeDuetInfo = useMemo(() => duets.find((d) => d.slug === activeDuet) || null, [duets, activeDuet]);
+
+  // Cart pricing — mirrors runReservationTx exactly (per-row rounding) so the
+  // displayed total matches what will be charged. Catalog prices (pre-submission).
+  // subtotal = gross; cross-sell (2nd+ à-la-carte per guest, duet counts toward the
+  // base) and NOMMAR10 as named discount lines; total = final.
+  const pricing = () => {
+    const guests = [];
+    let subtotal = 0, afterCross = 0, afterPromo = 0, anyNull = false;
+    for (let g = 0; g < guestCount; g++) {
+      const lines = [];
+      let count = 0; // treatments so far this guest (for cross-sell)
+      if (activeDuetInfo) {
+        const total = activeDuetInfo.totalPriceCents;
+        const perGuest = Math.floor(total / guestCount) + (g === 0 ? total - Math.floor(total / guestCount) * guestCount : 0);
+        const n = activeDuetInfo.serviceSlugs.length;
+        activeDuetInfo.serviceSlugs.forEach((cs, ci) => {
+          const gross = Math.floor(perGuest / n) + (ci === 0 ? perGuest - Math.floor(perGuest / n) * n : 0);
+          subtotal += gross; afterCross += finalPriceCents(gross, 0, 0); afterPromo += finalPriceCents(gross, 0, promoPct);
+          count += 1;
+        });
+      }
+      for (const slug of carts[g]) {
+        const pkg = pkgBySlug.get(slug);
+        if (pkg) {
+          const g0 = pkgGross(pkg);
+          if (g0 == null) anyNull = true;
+          else { for (const cs of pkg.serviceSlugs) { const c = priceOf(cs); subtotal += c; afterCross += c; afterPromo += finalPriceCents(c, 0, promoPct); } }
+          lines.push({ name: pkg.name, durationMin: pkg.durationMin, priceCents: g0, crossSell: false });
+        } else {
+          const c = priceOf(slug);
+          const cross = count >= 1 ? CROSS_SELL_DISCOUNT_PCT : 0;
+          if (c == null) anyNull = true;
+          else { subtotal += c; afterCross += finalPriceCents(c, cross, 0); afterPromo += finalPriceCents(c, cross, promoPct); }
+          count += 1;
+          const s = svcBySlug.get(slug);
+          lines.push({ name: s?.name || slug, durationMin: s?.durationMin || 0, priceCents: c, crossSell: cross > 0 });
+        }
+      }
+      guests.push(lines);
+    }
+    return { guests, subtotal, crossSellSavings: subtotal - afterCross, promoSavings: afterCross - afterPromo, total: afterPromo, anyNull };
+  };
 
   const info = (slug) => {
     const s = svcBySlug.get(slug);
@@ -240,6 +277,9 @@ export default function BookFlow() {
             <div style={css('width:11px;height:11px;background:#C2A56B;transform:rotate(45deg);')} />
           </div>
           <h2 style={css(heading + 'font-size:26px;margin:0 0 14px;')}>{t.thankYou}, {primary.name.split(' ')[0]}</h2>
+          {(() => { const pr = pricing(); return !pr.anyNull && pr.total > 0 ? (
+            <p style={css("font-family:var(--font-jost),sans-serif;font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:#C2A56B;margin:0 0 14px;")}>{t.total}: {eur(pr.total, lang)}</p>
+          ) : null; })()}
           <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:20px;line-height:1.55;color:#6E5E50;margin:0 auto 8px;max-width:38ch;")}>{t.confirmationMsg}</p>
           <p style={css("font-family:var(--font-jost),sans-serif;font-size:13px;color:#8A7965;margin:18px 0 14px;")}>{t.emailOnWay}</p>
           <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:17px;color:#6E5E50;margin:0 auto 28px;max-width:34ch;")}>{t.arriveEarly}</p>
@@ -430,7 +470,7 @@ export default function BookFlow() {
           )}
         </div>
 
-        {withCart && <CartPanel t={t} lang={lang} guestCount={guestCount} guestItems={guestItems} duet={activeDuetInfo} promoPct={promoPct} />}
+        {withCart && <CartPanel t={t} lang={lang} guestCount={guestCount} duet={activeDuetInfo} promoPct={promoPct} pricing={pricing()} />}
       </div>
 
       {step >= 2 && (
@@ -516,7 +556,7 @@ function ServicePicker({ t, lang, grouped, packages, duets, cart, pkgBySlug, gue
           <div style={css(eyebrow + 'margin-bottom:14px;')}>{g.label}</div>
           <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px;')}>
             {g.items.map((s) => (
-              <Row key={s.slug} t={t} name={s.name} duration={s.durationMin} selected={inCart(s.slug)} disabled={hasPackage} onClick={() => onToggle(s.slug)} />
+              <Row key={s.slug} t={t} name={s.name} duration={s.durationMin} price={eur(s.priceCents, lang)} selected={inCart(s.slug)} disabled={hasPackage} onClick={() => onToggle(s.slug)} />
             ))}
           </div>
         </div>
@@ -525,9 +565,11 @@ function ServicePicker({ t, lang, grouped, packages, duets, cart, pkgBySlug, gue
       <div style={css('margin-bottom:8px;')}>
         <div style={css(eyebrow + 'margin-bottom:14px;')}>{t.journeys}</div>
         <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px;')}>
-          {packages.map((p) => (
-            <Row key={p.name} t={t} name={p.name} duration={p.durationMin} selected={inCart(slugify(p.name))} onClick={() => (inCart(slugify(p.name)) ? onToggle(slugify(p.name)) : onPackage(slugify(p.name)))} />
-          ))}
+          {packages.map((p) => {
+            let gross = 0; let ok = true;
+            for (const cs of p.serviceSlugs || []) { const c = svcBySlug.get(cs)?.priceCents; if (c == null) { ok = false; break; } gross += c; }
+            return <Row key={p.name} t={t} name={p.name} duration={p.durationMin} price={ok ? eur(gross, lang) : null} selected={inCart(slugify(p.name))} onClick={() => (inCart(slugify(p.name)) ? onToggle(slugify(p.name)) : onPackage(slugify(p.name)))} />;
+          })}
         </div>
       </div>
 
@@ -563,12 +605,12 @@ function ServicePicker({ t, lang, grouped, packages, duets, cart, pkgBySlug, gue
   );
 }
 
-function Row({ t, name, duration, selected, disabled, onClick }) {
+function Row({ t, name, duration, price, selected, disabled, onClick }) {
   return (
     <FX as="button" onClick={disabled && !selected ? undefined : onClick} style={'display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;cursor:' + (disabled && !selected ? 'not-allowed' : 'pointer') + ';padding:15px 16px;border-radius:2px;background:#FFFDF8;transition:border-color .3s ease;' + (selected ? 'border:1px solid #C2A56B;' : 'border:1px solid rgba(194,165,107,0.3);') + (disabled && !selected ? 'opacity:0.4;' : '')} hover={disabled && !selected ? '' : 'border-color:#C2A56B;'}>
       <span>
         <span style={css("display:block;font-family:var(--font-cinzel),serif;font-size:15px;color:#3D2F25;")}>{name}</span>
-        <span style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#C2A56B;")}>{duration} {t.minShort}</span>
+        <span style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#C2A56B;")}>{duration} {t.minShort}{price ? ` · ${price}` : ''}</span>
       </span>
       <span style={css('flex-shrink:0;font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:' + (selected ? '#C2A56B' : '#A8967C') + ';')}>{selected ? '✓ ' + t.added : '+ ' + t.add}</span>
     </FX>
@@ -616,54 +658,59 @@ function Field({ label, value, onChange, type = 'text', id, autoComplete }) {
   );
 }
 
-function CartPanel({ t, lang, guestCount, guestItems, duet, promoPct }) {
-  const hasAddOns = Array.from({ length: guestCount }, (_, g) => (guestItems(g) || []).some((it) => it.kind !== 'duet')).some(Boolean);
+function CartPanel({ t, lang, guestCount, duet, promoPct, pricing }) {
+  const { guests, subtotal, crossSellSavings, promoSavings, total, anyNull } = pricing;
+  const line = (label, value, opts = {}) => (
+    <div style={css('display:flex;justify-content:space-between;gap:10px;font-family:var(--font-jost),sans-serif;font-size:12.5px;line-height:2;' + (opts.strong ? 'color:#3D2F25;' : 'color:#8A7965;'))}>
+      <span>{label}</span><span style={css('white-space:nowrap;' + (opts.color ? `color:${opts.color};` : ''))}>{value}</span>
+    </div>
+  );
   return (
     <aside style={css(card + 'padding:24px 24px 26px;position:sticky;top:calc(90px + env(safe-area-inset-top));max-height:calc(100dvh - 110px);overflow-y:auto;')}>
       <div style={css(eyebrow + 'margin-bottom:16px;')}>{t.yourBooking}</div>
 
-      {/* Couples package as a single line with the (promo-aware) total */}
+      {/* Couples package as a single line with its total + a "for two" indicator */}
       {duet && (
         <div style={css('background:#F3EADA;border:1px solid rgba(194,165,107,0.4);border-radius:2px;padding:12px 14px;margin-bottom:16px;')}>
           <div style={css('display:flex;justify-content:space-between;align-items:baseline;gap:10px;')}>
             <span style={css('font-family:var(--font-cinzel),serif;font-size:14px;color:#3D2F25;')}>{duet.name}</span>
-            {duet.totalPriceCents != null && (
-              <span style={css('font-family:var(--font-cormorant),serif;font-size:17px;color:#3D2F25;white-space:nowrap;')}>
-                {promoPct > 0 && <span style={css('color:#A8967C;text-decoration:line-through;font-size:14px;margin-right:6px;')}>{eur(duet.totalPriceCents, lang)}</span>}
-                {eur(duetTotalCents(duet, promoPct), lang)}
-              </span>
-            )}
+            {duet.totalPriceCents != null && <span style={css('font-family:var(--font-cormorant),serif;font-size:17px;color:#3D2F25;white-space:nowrap;')}>{eur(duet.totalPriceCents, lang)}</span>}
           </div>
-          <span style={css('font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.1em;color:#C2A56B;')}>{t.duetForTwoSuffix} · {duet.durationMin} {t.minShort}{promoPct > 0 ? ` · −${promoPct}%` : ''}</span>
+          <span style={css('font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.1em;color:#C2A56B;')}>{t.duetForTwoSuffix} · {duet.durationMin} {t.minShort}</span>
         </div>
       )}
 
-      {(duet ? hasAddOns : true) && Array.from({ length: guestCount }, (_, g) => {
-        const items = (guestItems(g) || []).filter((it) => it.kind !== 'duet'); // duet shown above
-        let alaCarteIdx = duet ? 1 : 0; // duet counts as the guest's 1st treatment for cross-sell
-        return (
-          <div key={g} style={css('margin-bottom:16px;')}>
-            {guestCount === 2 && <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:8px;")}>{t.guest} {g + 1}</div>}
-            {items.length === 0 && !duet && <div style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:15px;color:#A8967C;")}>—</div>}
-            {items.map((it) => {
-              const crossSell = it.kind === 'service' && alaCarteIdx++ >= 1;
-              return (
-                <div key={it.slug} style={css('display:flex;justify-content:space-between;gap:10px;font-family:var(--font-jost),sans-serif;font-size:13px;color:#3D2F25;line-height:1.9;')}>
-                  <span>{it.name} <span style={css('color:#A8967C;')}>· {it.durationMin}{t.minShort}</span>{crossSell ? <span style={css('color:#C2A56B;')}> −{CROSS_SELL_DISCOUNT_PCT}%</span> : null}</span>
-                </div>
-              );
-            })}
+      {/* per-guest add-on / à-la-carte lines */}
+      {guests.map((lines, g) => (
+        (lines.length > 0 || (!duet)) && (
+          <div key={g} style={css('margin-bottom:14px;')}>
+            {guestCount === 2 && <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:6px;")}>{t.guest} {g + 1}</div>}
+            {lines.length === 0 && !duet && <div style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:15px;color:#A8967C;")}>—</div>}
+            {lines.map((it, i) => (
+              <div key={i} style={css('display:flex;justify-content:space-between;gap:10px;font-family:var(--font-jost),sans-serif;font-size:13px;color:#3D2F25;line-height:1.8;')}>
+                <span>{it.name} <span style={css('color:#A8967C;')}>· {it.durationMin}{t.minShort}</span>{it.crossSell ? <span style={css('color:#C2A56B;')}> −{CROSS_SELL_DISCOUNT_PCT}%</span> : null}</span>
+                <span style={css('color:#8A7965;white-space:nowrap;')}>{eur(it.priceCents, lang) ?? t.priceTbd}</span>
+              </div>
+            ))}
           </div>
-        );
-      })}
+        )
+      ))}
 
-      <div style={css('height:1px;background:rgba(194,165,107,0.3);margin:6px 0 14px;')} />
-      <div style={css('display:flex;justify-content:space-between;align-items:baseline;')}>
-        <span style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;")}>{t.total}</span>
-        <span style={css("font-family:var(--font-cormorant),serif;font-size:18px;font-style:italic;color:#C2A56B;")}>
-          {duet ? (hasAddOns ? `${eur(duetTotalCents(duet, promoPct), lang)} + ${t.priceTbd.toLowerCase()}` : eur(duetTotalCents(duet, promoPct), lang)) : t.priceTbd}
-        </span>
-      </div>
+      <div style={css('height:1px;background:rgba(194,165,107,0.3);margin:6px 0 12px;')} />
+      {/* Summary: subtotal → named discounts → total */}
+      {anyNull ? (
+        line(t.total, t.priceTbd, { strong: true })
+      ) : (
+        <>
+          {(crossSellSavings > 0 || promoSavings > 0) && line(t.subtotal, eur(subtotal, lang))}
+          {crossSellSavings > 0 && line(`${t.discountSecond} −${CROSS_SELL_DISCOUNT_PCT}%`, `−${eur(crossSellSavings, lang)}`, { color: '#3E7C58' })}
+          {promoSavings > 0 && line(`${PROMO.code} −${promoPct}%`, `−${eur(promoSavings, lang)}`, { color: '#3E7C58' })}
+          <div style={css('display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;')}>
+            <span style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#A8967C;")}>{t.total}</span>
+            <span style={css("font-family:var(--font-cormorant),serif;font-size:20px;color:#3D2F25;")}>{eur(total, lang)}</span>
+          </div>
+        </>
+      )}
     </aside>
   );
 }
