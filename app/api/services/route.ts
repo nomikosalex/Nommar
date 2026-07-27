@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const services = await prisma.service.findMany({
     where: { active: true },
-    select: { slug: true, name: true, category: true, durationMin: true, description: true, priceCents: true },
+    select: { slug: true, name: true, category: true, durationMin: true, description: true, priceCents: true, imageUrl: true },
     orderBy: { id: 'asc' },
   });
   return NextResponse.json({ services });

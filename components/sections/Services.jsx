@@ -14,13 +14,24 @@ export default function Services() {
   const router = useRouter();
   const [aroma, setAroma] = useState(0);
   const [priceMap, setPriceMap] = useState({}); // slug → catalog priceCents
+  const [imgMap, setImgMap] = useState({}); // slug → uploaded image URL (else placeholder)
+  // slug → live { name, description, durationMin } — overrides the static copy
+  // below once fetched. Badges/lists/options/solutions stay static marketing
+  // copy. Until the fetch resolves (or if it fails), the static fallback is
+  // what's already rendered, so there's no blank/broken state either way.
+  const [liveMap, setLiveMap] = useState({});
   useEffect(() => {
     fetch('/api/services').then((r) => r.json()).then((d) => {
-      const m = {};
-      (d.services || []).forEach((s) => { m[s.slug] = s.priceCents; });
-      setPriceMap(m);
+      const pm = {}, im = {}, lm = {};
+      (d.services || []).forEach((s) => {
+        pm[s.slug] = s.priceCents;
+        if (s.imageUrl) im[s.slug] = s.imageUrl;
+        lm[s.slug] = { name: s.name, description: s.description, durationMin: s.durationMin };
+      });
+      setPriceMap(pm); setImgMap(im); setLiveMap(lm);
     }).catch(() => {});
   }, []);
+  const fmtDuration = (min) => `${min} ${lang === 'gr' ? 'λεπτά' : 'min'}`;
   const categories = localizedCategories(lang);
   const aromas = localizedAromas(lang);
   const book = (slug) => router.push('/book?service=' + slug);
@@ -59,21 +70,26 @@ export default function Services() {
           )}
 
           <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(330px,100%),1fr));gap:clamp(22px,2.5vw,34px);align-items:stretch;')}>
-            {cat.services.map((svc, i) => (
+            {cat.services.map((svc, i) => {
+              const live = liveMap[svc.slug];
+              const displayName = live?.name ?? svc.name;
+              const displayDesc = live?.description || svc.desc;
+              const displayDuration = live?.durationMin != null ? fmtDuration(live.durationMin) : svc.duration;
+              return (
               <Reveal key={svc.slug} delay={i * 0.06} style="display:flex;">
                 <FX style="display:flex;flex-direction:column;width:100%;background:#FFFDF8;border:1px solid rgba(194,165,107,0.25);overflow:hidden;box-shadow:0 18px 42px -30px rgba(61,47,37,0.5);transition:transform .4s ease,box-shadow .4s ease,border-color .4s ease;" hover="transform:translateY(-6px);box-shadow:0 32px 60px -32px rgba(61,47,37,0.45);border-color:rgba(194,165,107,0.55);">
                   <div style={css('position:relative;height:180px;')}>
-                    <Placeholder label={svc.img} style="width:100%;height:100%;" />
+                    {imgMap[svc.slug] ? <img src={imgMap[svc.slug]} alt={displayName} loading="lazy" style={css('width:100%;height:100%;object-fit:cover;display:block;')} /> : <Placeholder label={svc.img} style="width:100%;height:100%;" />}
                     {svc.badge && (
                       <div style={css("position:absolute;top:14px;left:14px;font-family:var(--font-jost),sans-serif;font-size:9.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);padding:6px 13px;border-radius:1px;")}>{svc.badge}</div>
                     )}
                   </div>
                   <div style={css('padding:26px 26px 28px;display:flex;flex-direction:column;flex:1;')}>
                     <div style={css('display:flex;justify-content:space-between;align-items:baseline;gap:14px;')}>
-                      <h3 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:19px;letter-spacing:0.02em;color:#3D2F25;margin:0;line-height:1.3;")}>{svc.name}</h3>
+                      <h3 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:19px;letter-spacing:0.02em;color:#3D2F25;margin:0;line-height:1.3;")}>{displayName}</h3>
                     </div>
-                    <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#C2A56B;margin:10px 0 16px;")}>{svc.duration}</div>
-                    <p style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:14px;line-height:1.75;color:#6E5E50;margin:0 0 18px;")}>{svc.desc}</p>
+                    <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:#C2A56B;margin:10px 0 16px;")}>{displayDuration}</div>
+                    <p style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:14px;line-height:1.75;color:#6E5E50;margin:0 0 18px;")}>{displayDesc}</p>
 
                     {svc.list && (
                       <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px 18px;margin-bottom:20px;')}>
@@ -136,7 +152,8 @@ export default function Services() {
                   </div>
                 </FX>
               </Reveal>
-            ))}
+              );
+            })}
           </div>
         </section>
       ))}

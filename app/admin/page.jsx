@@ -48,6 +48,8 @@ const COPY = {
     askDelete: 'Delete this booking permanently? This cannot be undone.',
     askPurge: 'Delete ALL past & cancelled bookings permanently? This cannot be undone.',
     source: 'Source', direct: 'direct',
+    deleteError: 'Could not delete this booking.',
+    purgeError: 'Could not clear archived bookings. Please try again.',
   },
   gr: {
     heading: 'Κρατήσεις',
@@ -75,6 +77,8 @@ const COPY = {
     askDelete: 'Οριστική διαγραφή αυτής της κράτησης; Δεν αναιρείται.',
     askPurge: 'Οριστική διαγραφή ΟΛΩΝ των παρελθόντων & ακυρωμένων κρατήσεων; Δεν αναιρείται.',
     source: 'Πηγή', direct: 'απευθείας',
+    deleteError: 'Δεν ήταν δυνατή η διαγραφή αυτής της κράτησης.',
+    purgeError: 'Δεν ήταν δυνατή η εκκαθάριση των παλαιών κρατήσεων. Δοκιμάστε ξανά.',
   },
 };
 
@@ -130,15 +134,34 @@ export default function Dashboard() {
     }
   };
 
+  // Optimistic removal, but rolled back on any non-2xx or network failure — a
+  // rejected delete (e.g. one guest's appointment hasn't happened yet) must not
+  // make the row silently vanish while the reservation is still in the DB.
   const remove = async (id) => {
     if (!window.confirm(t.askDelete)) return;
+    const prev = reservations;
     setReservations((rs) => rs.filter((r) => r.id !== id));
-    await fetch('/api/admin/bookings', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(load);
+    try {
+      const r = await fetch('/api/admin/bookings', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setReservations(prev); setError(d.error || t.deleteError); return; }
+    } catch {
+      setReservations(prev); setError(t.deleteError); return;
+    }
+    setError('');
+    load();
   };
 
   const purgeArchived = async () => {
     if (!window.confirm(t.askPurge)) return;
-    await fetch('/api/admin/bookings', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ purge: true }) }).catch(() => {});
+    try {
+      const r = await fetch('/api/admin/bookings', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ purge: true }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setError(d.error || t.purgeError); return; }
+    } catch {
+      setError(t.purgeError); return;
+    }
+    setError('');
     load();
   };
 

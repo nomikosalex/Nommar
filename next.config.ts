@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
+          // Images-only CSP: local assets + data URIs + Supabase Storage (public
+          // service images). Scoped to img-src so scripts/styles stay unrestricted
+          // (the app relies on inline styles). No default-src → other types unaffected.
+          { key: 'Content-Security-Policy', value: "img-src 'self' data: https://*.supabase.co" },
         ],
       },
     ];

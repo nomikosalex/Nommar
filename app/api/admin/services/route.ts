@@ -41,52 +41,69 @@ function validImageUrl(u: unknown): boolean {
   }
 }
 
-// POST — create a service.
-export async function POST(request: Request) {
-  if (!(await guard())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = await request.json().catch(() => ({}));
-  const err = validate(body);
-  if (err) return NextResponse.json({ error: err }, { status: 400 });
-
-  const slug = slugify(body.name);
-  if (await prisma.service.findUnique({ where: { slug } })) {
-    return NextResponse.json({ error: 'A service with that name already exists' }, { status: 400 });
-  }
-  const service = await prisma.service.create({
-    data: {
-      slug,
-      name: body.name.trim(),
-      category: body.category,
-      durationMin: Number(body.durationMin),
-      priceCents: body.priceCents != null && body.priceCents !== '' ? Number(body.priceCents) : null,
-      description: String(body.description ?? '').trim(),
-      imageUrl: validImageUrl(body.imageUrl) ? body.imageUrl : null,
-    },
-  });
-  return NextResponse.json({ ok: true, service }, { status: 201 });
+// Validate one UPDATE (only the provided fields). Returns an error string or null.
+function validateUpdate(u: any): string | null {
+  if (u?.name !== undefined && !String(u.name).trim()) return 'Name is required';
+  if (u?.category !== undefined && !CATEGORY_LIST.includes(u.category)) return 'Invalid category';
+  if (u?.durationMin !== undefined) { const d = Number(u.durationMin); if (!Number.isInteger(d) || d < 5 || d > 600) return 'Duration must be 5–600 min'; }
+  if (u?.priceCents !== undefined && u.priceCents !== null && (!Number.isInteger(Number(u.priceCents)) || Number(u.priceCents) < 0)) return 'Invalid price';
+  return null;
 }
+const cleanUpdate = (u: any) => {
+  const data: Record<string, unknown> = {};
+  if (u.name !== undefined) data.name = String(u.name).trim();
+  if (u.category !== undefined) data.category = u.category;
+  if (u.durationMin !== undefined) data.durationMin = Number(u.durationMin);
+  if (u.description !== undefined) data.description = String(u.description ?? '').trim();
+  if (typeof u.active === 'boolean') data.active = u.active;
+  if (u.imageUrl !== undefined) data.imageUrl = validImageUrl(u.imageUrl) ? u.imageUrl : null;
+  if (u.priceCents !== undefined) data.priceCents = u.priceCents === null || u.priceCents === '' ? null : Number(u.priceCents);
+  return data;
+};
 
-// PATCH — update fields (name/category/duration/price/description/active).
-export async function PATCH(request: Request) {
+// PUT — batch save: { creates:[…], updates:[{id,…}] } applied in ONE transaction.
+// All-or-nothing: any validation error or DB failure leaves ZERO services changed.
+export async function PUT(request: Request) {
   if (!(await guard())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await request.json().catch(() => ({}));
-  const id = Number(body?.id);
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  const creates: any[] = Array.isArray(body?.creates) ? body.creates : [];
+  const updates: any[] = Array.isArray(body?.updates) ? body.updates : [];
+  if (creates.length === 0 && updates.length === 0) return NextResponse.json({ error: 'No changes to save' }, { status: 400 });
 
-  const data: Record<string, unknown> = {};
-  if (body.name != null) data.name = String(body.name).trim();
-  if (body.category != null) {
-    if (!CATEGORY_LIST.includes(body.category)) return NextResponse.json({ error: 'Invalid category' }, { status: 400 });
-    data.category = body.category;
+  // --- validate everything up front (name the offending row) ---
+  for (const c of creates) {
+    const err = validate(c);
+    if (err) return NextResponse.json({ error: `${String(c?.name || 'New service').trim() || 'New service'}: ${err}` }, { status: 400 });
   }
-  if (body.durationMin != null) data.durationMin = Number(body.durationMin);
-  if (body.description != null) data.description = String(body.description).trim();
-  if (typeof body.active === 'boolean') data.active = body.active;
-  if (body.imageUrl !== undefined) data.imageUrl = validImageUrl(body.imageUrl) ? body.imageUrl : null;
-  if (body.priceCents !== undefined) data.priceCents = body.priceCents === null || body.priceCents === '' ? null : Number(body.priceCents);
+  for (const u of updates) {
+    if (!Number.isInteger(Number(u?.id))) return NextResponse.json({ error: 'Update is missing a valid id' }, { status: 400 });
+    const err = validateUpdate(u);
+    if (err) return NextResponse.json({ error: `${String(u?.name || 'Service ' + u.id)}: ${err}` }, { status: 400 });
+  }
 
-  const service = await prisma.service.update({ where: { id }, data });
-  return NextResponse.json({ ok: true, service });
+  // --- slug collisions for creates (existing + within batch) → clear message ---
+  const existing = new Set((await prisma.service.findMany({ select: { slug: true } })).map((s) => s.slug));
+  const batchSlugs = new Set<string>();
+
+  try {
+    const data = creates.map((c) => {
+      const slug = slugify(c.name);
+      if (existing.has(slug) || batchSlugs.has(slug)) { const e: any = new Error('dup'); e._name = String(c.name).trim(); throw e; }
+      batchSlugs.add(slug);
+      return { slug, name: String(c.name).trim(), category: c.category, durationMin: Number(c.durationMin), priceCents: c.priceCents != null && c.priceCents !== '' ? Number(c.priceCents) : null, description: String(c.description ?? '').trim() };
+    });
+    // ONE atomic transaction — array form, never a per-item loop.
+    await prisma.$transaction([
+      ...data.map((d) => prisma.service.create({ data: d })),
+      ...updates.map((u) => prisma.service.update({ where: { id: Number(u.id) }, data: cleanUpdate(u) })),
+    ]);
+    return NextResponse.json({ ok: true, created: creates.length, updated: updates.length });
+  } catch (e: any) {
+    if (e?._name) return NextResponse.json({ error: `A service named "${e._name}" already exists` }, { status: 409 });
+    if (e?.code === 'P2002') return NextResponse.json({ error: 'A service with that name already exists' }, { status: 409 });
+    if (e?.code === 'P2025') return NextResponse.json({ error: 'One of the services no longer exists — reload and try again' }, { status: 409 });
+    return NextResponse.json({ error: 'Could not save changes — no changes were applied' }, { status: 500 });
+  }
 }
 
 // DELETE — only if no bookings reference it; otherwise deactivate instead.
