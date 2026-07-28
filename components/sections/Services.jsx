@@ -121,9 +121,12 @@ export default function Services() {
                     {svc.options && (
                       <div style={css('margin-bottom:20px;')}>
                         <div style={css("font-family:var(--font-jost),sans-serif;font-size:10.5px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;margin-bottom:12px;")}>{t.chooseRitual}</div>
-                        <div style={css('display:flex;flex-wrap:wrap;gap:8px;')}>
+                        <div style={css('display:flex;flex-direction:column;gap:10px;')}>
                           {svc.options.map((o) => (
-                            <span key={o} style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.08em;color:#6E5E50;background:#F3EADA;border:1px solid rgba(194,165,107,0.35);padding:9px 16px;border-radius:2px;")}>{o}</span>
+                            <div key={o.name} style={css('background:#F3EADA;border:1px solid rgba(194,165,107,0.35);padding:12px 16px;border-radius:2px;')}>
+                              <div style={css("font-family:var(--font-jost),sans-serif;font-size:12.5px;letter-spacing:0.03em;color:#3D2F25;font-weight:500;margin-bottom:4px;")}>{o.name}</div>
+                              {o.desc && <div style={css("font-family:var(--font-jost),sans-serif;font-weight:300;font-size:12px;line-height:1.55;color:#6E5E50;")}>{o.desc}</div>}
+                            </div>
                           ))}
                         </div>
                       </div>

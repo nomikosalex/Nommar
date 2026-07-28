@@ -121,11 +121,24 @@ function resolveChains(
       }
       const pkg = packageBySlug(slug);
       if (pkg && Array.isArray(pkg.serviceSlugs)) {
-        for (const cs of pkg.serviceSlugs) {
+        // A normal package may carry a fixed totalPriceCents (bundle discount off
+        // its parts), split across its components the same way a duet splits
+        // across guests — remainder cent(s) to the first component.
+        const total = pkg.totalPriceCents as number | undefined;
+        const n = pkg.serviceSlugs.length;
+        const perComp = total != null ? Math.floor(total / n) : null;
+        const compRem = total != null ? total - (perComp as number) * n : 0;
+        pkg.serviceSlugs.forEach((cs: string, ci: number) => {
           const csv = serviceBySlug.get(cs);
           if (!csv) return; // handled below via error
-          comps.push({ ...csv, guestIndex: gi + 1, sequenceIndex: seq++, packageSlug: slug });
-        }
+          comps.push({
+            ...csv,
+            guestIndex: gi + 1,
+            sequenceIndex: seq++,
+            packageSlug: slug,
+            priceOverrideCents: total != null ? (perComp as number) + (ci === 0 ? compRem : 0) : undefined,
+          });
+        });
       }
     }
     chains.push(comps);

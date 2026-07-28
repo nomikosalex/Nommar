@@ -10,6 +10,7 @@ const telHref = (p) => 'tel:' + p.replace(/[^\d+]/g, '');
 const NAV = [
   { href: '/', tkey: 'navHome' },
   { href: '/services', tkey: 'navServices' },
+  { href: '/hair-removal', tkey: 'navHairRemoval' },
   { href: '/packages', tkey: 'navPackages' },
   { href: '/about', tkey: 'navAbout' },
   { href: '/contact', tkey: 'navContact' },

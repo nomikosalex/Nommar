@@ -95,8 +95,13 @@ export default function BookFlow() {
   const svcBySlug = useMemo(() => new Map(services.map((s) => [s.slug, s])), [services]);
   const pkgBySlug = useMemo(() => new Map(NORMAL_PACKAGES.map((p) => [slugify(p.name), p])), []);
   const priceOf = (slug) => svcBySlug.get(slug)?.priceCents ?? null; // catalog price of a service
-  // Gross catalog total of a normal package = sum of its components (null if any unpriced).
-  const pkgGross = (pkg) => { let s = 0; for (const cs of pkg.serviceSlugs || []) { const c = priceOf(cs); if (c == null) return null; s += c; } return s; };
+  // Gross catalog total of a normal package: its fixed totalPriceCents if set
+  // (a bundle discount off its parts — mirrors packagePriceCents in lib/money.js),
+  // else the sum of its components (null if any unpriced).
+  const pkgGross = (pkg) => {
+    if (pkg.totalPriceCents != null) return pkg.totalPriceCents;
+    let s = 0; for (const cs of pkg.serviceSlugs || []) { const c = priceOf(cs); if (c == null) return null; s += c; } return s;
+  };
   // Localized packages split into normal journeys vs duets.
   const localized = useMemo(() => localizedPackages(lang), [lang]);
   const normalPackages = useMemo(() => localized.filter((p) => !p.duet), [localized]);
@@ -128,7 +133,19 @@ export default function BookFlow() {
         if (pkg) {
           const g0 = pkgGross(pkg);
           if (g0 == null) anyNull = true;
-          else { for (const cs of pkg.serviceSlugs) { const c = priceOf(cs); subtotal += c; afterCross += c; afterPromo += finalPriceCents(c, 0, promoPct); } }
+          else if (pkg.totalPriceCents != null) {
+            // Fixed bundle price — split across components (server mirrors this
+            // exactly in resolveChains), not the raw per-component sum.
+            const n = pkg.serviceSlugs.length;
+            const perComp = Math.floor(g0 / n);
+            const compRem = g0 - perComp * n;
+            pkg.serviceSlugs.forEach((cs, ci) => {
+              const gross = perComp + (ci === 0 ? compRem : 0);
+              subtotal += gross; afterCross += gross; afterPromo += finalPriceCents(gross, 0, promoPct);
+            });
+          } else {
+            for (const cs of pkg.serviceSlugs) { const c = priceOf(cs); subtotal += c; afterCross += c; afterPromo += finalPriceCents(c, 0, promoPct); }
+          }
           lines.push({ name: pkg.name, durationMin: pkg.durationMin, priceCents: g0, crossSell: false });
         } else {
           const c = priceOf(slug);
@@ -566,8 +583,8 @@ function ServicePicker({ t, lang, grouped, packages, duets, cart, pkgBySlug, gue
         <div style={css(eyebrow + 'margin-bottom:14px;')}>{t.journeys}</div>
         <div style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:12px;')}>
           {packages.map((p) => {
-            let gross = 0; let ok = true;
-            for (const cs of p.serviceSlugs || []) { const c = svcBySlug.get(cs)?.priceCents; if (c == null) { ok = false; break; } gross += c; }
+            let gross = p.totalPriceCents ?? 0; let ok = p.totalPriceCents != null;
+            if (!ok) { ok = true; for (const cs of p.serviceSlugs || []) { const c = svcBySlug.get(cs)?.priceCents; if (c == null) { ok = false; break; } gross += c; } }
             return <Row key={p.name} t={t} name={p.name} duration={p.durationMin} price={ok ? eur(gross, lang) : null} selected={inCart(slugify(p.name))} onClick={() => (inCart(slugify(p.name)) ? onToggle(slugify(p.name)) : onPackage(slugify(p.name)))} />;
           })}
         </div>

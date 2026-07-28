@@ -10,6 +10,7 @@ import { useIsMobile } from '@/lib/useIsMobile';
 const NAV = [
   { key: 'home', href: '/', tkey: 'navHome' },
   { key: 'services', href: '/services', tkey: 'navServices' },
+  { key: 'hairRemoval', href: '/hair-removal', tkey: 'navHairRemoval' },
   { key: 'packages', href: '/packages', tkey: 'navPackages' },
   { key: 'about', href: '/about', tkey: 'navAbout' },
   { key: 'contact', href: '/contact', tkey: 'navContact' },
@@ -17,7 +18,7 @@ const NAV = [
 
 export default function Nav() {
   const { t, lang, setLang } = useLang();
-  const isMobile = useIsMobile();
+  const isMobile = useIsMobile(1280); // wider than the shared 880 default — 6 nav items in Greek (esp. "Η Ιστορία μας") need more room before the links fit on one line without wrapping
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -35,7 +36,7 @@ export default function Nav() {
         </Link>
 
         {!isMobile && (
-          <div style={css('display:flex;align-items:center;gap:clamp(18px,2.4vw,38px);')}>
+          <div style={css('display:flex;align-items:center;gap:clamp(10px,1.6vw,30px);')}>
             {items.map((item) => (
               <FX
                 key={item.key}
