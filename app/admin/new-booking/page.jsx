@@ -276,7 +276,7 @@ function BlockTime({ t, staff }) {
   const [blocks, setBlocks] = useState(null);
 
   const load = () => fetch('/api/admin/blocks').then((r) => r.json()).then((d) => setBlocks(d.blocks || []));
-  useEffect(load, []);
+  useEffect(() => { load(); }, []);
 
   const applyPreset = (preset) => {
     const s = start || nowAthensHHMM();
