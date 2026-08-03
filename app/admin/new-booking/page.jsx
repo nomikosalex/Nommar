@@ -1,11 +1,14 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { fromZonedTime } from 'date-fns-tz';
 import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import AdminHeader from '@/components/admin/AdminHeader';
 import { useAdminLocale } from '@/lib/useAdminLocale';
 import { formatEur } from '@/lib/money';
 import { OPENING_DATE } from '@/lib/booking.config';
+
+const ATHENS_TZ = 'Europe/Athens';
 
 const todayAthens = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Athens' }).format(new Date());
 const nowAthensHHMM = () => {
@@ -292,8 +295,8 @@ function BlockTime({ t, staff }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         staffId: Number(staffId),
-        startsAt: new Date(`${date}T${start}:00`).toISOString(),
-        endsAt: new Date(`${date}T${end}:00`).toISOString(),
+        startsAt: fromZonedTime(`${date}T${start}:00`, ATHENS_TZ).toISOString(),
+        endsAt: fromZonedTime(`${date}T${end}:00`, ATHENS_TZ).toISOString(),
         reason: reason.trim() || undefined,
       }),
     });
