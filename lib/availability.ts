@@ -471,7 +471,7 @@ export async function createManualBooking(input: {
   staffId: number;
   service: string; // slug
   start: string; // ISO
-  customer: { name: string; phone: string; email?: string };
+  customer: { name: string; phone?: string; email?: string };
   locale?: string;
   notes?: string;
 }) {
@@ -487,7 +487,7 @@ export async function createManualBooking(input: {
 }
 
 function runManualBookingTx(
-  input: { staffId: number; service: string; customer: { name: string; phone: string; email?: string }; locale?: string; notes?: string },
+  input: { staffId: number; service: string; customer: { name: string; phone?: string; email?: string }; locale?: string; notes?: string },
   dateStr: string,
   startMin: number,
 ) {
@@ -509,7 +509,7 @@ function runManualBookingTx(
     // No real email from a phone customer is common — a fake-domain placeholder
     // keeps every downstream path that expects Reservation.customerEmail (schema,
     // reminder/cancel emails, which fail silently via .catch) working untouched.
-    const phoneDigits = input.customer.phone.replace(/[^0-9]/g, '');
+    const phoneDigits = (input.customer.phone || '').replace(/[^0-9]/g, '');
     const email = input.customer.email?.trim() || `phone-${phoneDigits || 'guest'}@nommar.local`;
 
     const reservation = await tx.reservation.create({
@@ -517,7 +517,7 @@ function runManualBookingTx(
         status: 'CONFIRMED', // already accepted by phone — skip the PENDING step
         customerName: input.customer.name,
         customerEmail: email,
-        customerPhone: input.customer.phone,
+        customerPhone: input.customer.phone || '',
         guestCount: 1,
         notes: input.notes || null,
         locale: input.locale === 'gr' ? 'gr' : 'en',

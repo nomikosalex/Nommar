@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const from = fromZonedTime(`${date}T00:00:00`, TZ);
   const to = fromZonedTime(`${nextDay(date)}T00:00:00`, TZ);
 
-  const [appointments, staff] = await Promise.all([
+  const [appointments, staff, timeOff] = await Promise.all([
     prisma.booking.findMany({
       where: { startsAt: { gte: from, lt: to }, reservation: { status: { not: 'CANCELLED' } } },
       include: {
@@ -33,7 +33,11 @@ export async function GET(request: Request) {
       orderBy: { startsAt: 'asc' },
     }),
     prisma.staff.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { id: 'asc' } }),
+    prisma.timeOff.findMany({
+      where: { startsAt: { lt: to }, endsAt: { gt: from } },
+      select: { id: true, staffId: true, startsAt: true, endsAt: true, reason: true },
+    }),
   ]);
 
-  return NextResponse.json({ appointments, staff });
+  return NextResponse.json({ appointments, staff, timeOff });
 }

@@ -29,7 +29,7 @@ const Body = z.object({
   start: z.string().min(1), // ISO UTC instant
   customer: z.object({
     name: z.string().trim().min(1).max(120),
-    phone: z.string().trim().min(5).max(40),
+    phone: z.string().trim().max(40).optional().or(z.literal('')),
     email: z.string().trim().email().optional().or(z.literal('')),
   }),
   locale: z.enum(['en', 'gr']).optional(),
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     staffId: d.staffId,
     service: d.service,
     start: d.start,
-    customer: { name: d.customer.name, phone: d.customer.phone, email: d.customer.email || undefined },
+    customer: { name: d.customer.name, phone: d.customer.phone || '', email: d.customer.email || undefined },
     locale: d.locale,
     notes: d.notes,
   });

@@ -12,6 +12,14 @@ const pxPerMin = ROW_H / 30;
 
 const hm = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ });
 const localMin = (iso) => { const [h, m] = hm.format(new Date(iso)).split(':').map(Number); return h * 60 + m; };
+const dateOf = new Intl.DateTimeFormat('en-CA', { timeZone: TZ });
+// Minute-of-THIS-day span for a (possibly multi-day) block, clamped to the
+// visible [DAY_START, DAY_END] window — a whole-spa closure can run for days.
+const daySpan = (startsAt, endsAt, dateStr) => {
+  const s = dateOf.format(new Date(startsAt)) < dateStr ? 0 : localMin(startsAt);
+  const e = dateOf.format(new Date(endsAt)) > dateStr ? 24 * 60 : localMin(endsAt);
+  return [Math.max(s, DAY_START), Math.min(e, DAY_END)];
+};
 const minToTime = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const shiftDay = (dateStr, delta) => { const [y, m, d] = dateStr.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d + delta)); return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`; };
@@ -29,6 +37,7 @@ export default function Calendar() {
   }, [date]);
 
   const appts = data?.appointments || [];
+  const timeOff = data?.timeOff || [];
   // Columns: active staff + any staff appearing in appointments.
   const colMap = new Map();
   (data?.staff || []).forEach((s) => colMap.set(s.id, s.name));
@@ -80,6 +89,15 @@ export default function Calendar() {
                   {hours.map((t) => (
                     <div key={t} style={css('position:absolute;left:0;right:0;top:' + (t - DAY_START) * pxPerMin + 'px;border-top:1px solid rgba(194,165,107,0.14);')} />
                   ))}
+                  {timeOff.filter((b) => b.staffId === null || b.staffId === c.id).map((b) => {
+                    const [s, e] = daySpan(b.startsAt, b.endsAt, date);
+                    if (e <= s) return null;
+                    const top = (s - DAY_START) * pxPerMin;
+                    const h = (e - s) * pxPerMin;
+                    return (
+                      <div key={'off-' + b.id} title={b.reason || (b.staffId === null ? 'Whole spa closed' : 'Time off')} style={css('position:absolute;left:0;right:0;top:' + top + 'px;height:' + h + 'px;background:repeating-linear-gradient(135deg,rgba(138,121,101,0.16),rgba(138,121,101,0.16) 6px,rgba(138,121,101,0.28) 6px,rgba(138,121,101,0.28) 12px);border-top:1px solid rgba(138,121,101,0.35);border-bottom:1px solid rgba(138,121,101,0.35);pointer-events:none;')} />
+                    );
+                  })}
                   {appts.filter((a) => a.staff.id === c.id).map((a) => {
                     const s = localMin(a.startsAt);
                     const top = (s - DAY_START) * pxPerMin;
@@ -100,6 +118,7 @@ export default function Calendar() {
         <div style={css('display:flex;gap:18px;margin-top:14px;font-family:var(--font-jost),sans-serif;font-size:11px;color:#8A7965;')}>
           <span><span style={css('display:inline-block;width:11px;height:11px;border-radius:2px;background:linear-gradient(135deg,#F4E4BC,#E6CF95);vertical-align:middle;margin-right:5px;')} />Pending</span>
           <span><span style={css('display:inline-block;width:11px;height:11px;border-radius:2px;background:linear-gradient(135deg,#CFE6CF,#A9D3AC);vertical-align:middle;margin-right:5px;')} />Confirmed</span>
+          <span><span style={css('display:inline-block;width:11px;height:11px;border-radius:2px;background:repeating-linear-gradient(135deg,rgba(138,121,101,0.16),rgba(138,121,101,0.16) 3px,rgba(138,121,101,0.28) 3px,rgba(138,121,101,0.28) 6px);vertical-align:middle;margin-right:5px;')} />Time off</span>
         </div>
       </main>
     </>

@@ -263,7 +263,7 @@ function Card({ r, onStatus, onDelete, muted, t, locale }) {
         ))}
       </div>
       <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;color:#8A7965;margin-top:12px;")}>
-        {r.customerEmail} · {r.customerPhone}{r.promoCode ? ` · ${t.promo} ${r.promoCode}` : ''}{r.notes ? ` · “${r.notes}”` : ''}
+        {[r.customerEmail, r.customerPhone].filter(Boolean).join(' · ')}{r.promoCode ? ` · ${t.promo} ${r.promoCode}` : ''}{r.notes ? ` · “${r.notes}”` : ''}
       </div>
       <div style={css("font-family:var(--font-jost),sans-serif;font-size:11.5px;color:#A8967C;margin-top:4px;")}>
         {t.source}: {sourceLabel(r, t)}
