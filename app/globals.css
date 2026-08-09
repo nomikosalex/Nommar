@@ -18,6 +18,15 @@ button {
   color: rgba(61, 47, 37, 0.4);
 }
 
+/* FAQ accordion: hide the native <details> disclosure marker — a custom
+   indicator is rendered instead (inline styles can't target ::marker). */
+summary {
+  list-style: none;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
 /* Mobile / touch behaviour */
 * {
   -webkit-tap-highlight-color: rgba(194, 165, 107, 0.2);

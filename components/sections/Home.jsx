@@ -27,7 +27,9 @@ export default function Home() {
           <div style={css('position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 45%,rgba(250,245,236,0.62),rgba(250,245,236,0.93) 78%);')} />
           <Reveal style="position:relative;text-align:center;padding:90px clamp(20px,5vw,40px);display:flex;flex-direction:column;align-items:center;">
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:26px;")}>{t.heroLocation}</div>
-            <img src="/assets/logo-medallion.png" alt="Nommar — Beauty &amp; Spa by Margarita" style={css('width:clamp(250px,30vw,360px);height:auto;display:block;filter:drop-shadow(0 20px 40px rgba(194,165,107,0.25));')} />
+            <h1 style={css('margin:0;display:block;')}>
+              <img src="/assets/logo-medallion.png" alt="Nommar — Beauty &amp; Spa by Margarita · Kamari, Santorini" width={627} height={627} style={css('width:clamp(250px,30vw,360px);height:auto;display:block;filter:drop-shadow(0 20px 40px rgba(194,165,107,0.25));')} />
+            </h1>
             <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-weight:400;font-size:clamp(23px,3.2vw,38px);line-height:1.4;color:#3D2F25;max-width:18ch;margin:34px 0 0;")}>&ldquo;{t.tagline}&rdquo;</p>
             <FX as="button" onClick={() => router.push('/book')} style="margin-top:40px;font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:16px 38px;cursor:pointer;border-radius:1px;box-shadow:0 12px 30px -10px rgba(194,165,107,0.6);transition:transform .4s ease,box-shadow .4s ease;" hover="transform:translateY(-3px);box-shadow:0 18px 38px -12px rgba(194,165,107,0.7);">{t.bookRitual}</FX>
           </Reveal>
@@ -39,7 +41,7 @@ export default function Home() {
         <section style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));min-height:86dvh;')}>
           <div style={css('display:flex;flex-direction:column;justify-content:center;padding:clamp(48px,7vw,110px) clamp(24px,6vw,90px);')}>
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:24px;")}>{t.heroLocation}</div>
-            <div style={css("font-family:var(--font-cinzel),serif;font-size:clamp(44px,7vw,86px);font-weight:600;letter-spacing:0.08em;line-height:1;background:linear-gradient(180deg,#BFA15F,#E6CF95 50%,#BFA15F);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;")}>NOMMAR</div>
+            <h1 style={css("margin:0;font-family:var(--font-cinzel),serif;font-size:clamp(44px,7vw,86px);font-weight:600;letter-spacing:0.08em;line-height:1;background:linear-gradient(180deg,#BFA15F,#E6CF95 50%,#BFA15F);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;")}>NOMMAR</h1>
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.36em;text-transform:uppercase;color:#A8967C;margin-top:14px;")}>Beauty &amp; Spa</div>
             <div style={css("font-family:var(--font-pinyon),cursive;font-size:38px;color:#C2A56B;margin-top:2px;line-height:1.1;")}>by Margarita</div>
             <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(21px,2.4vw,30px);line-height:1.45;color:#3D2F25;max-width:22ch;margin:32px 0 0;")}>&ldquo;{t.tagline}&rdquo;</p>
@@ -58,7 +60,9 @@ export default function Home() {
         <section>
           <Reveal style="text-align:center;padding:clamp(56px,8vw,104px) clamp(20px,5vw,40px) clamp(40px,5vw,60px);display:flex;flex-direction:column;align-items:center;">
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:24px;")}>{t.heroLocation}</div>
-            <img src="/assets/logo-medallion.png" alt="Nommar" style={css('width:clamp(240px,28vw,330px);height:auto;filter:drop-shadow(0 18px 36px rgba(194,165,107,0.22));')} />
+            <h1 style={css('margin:0;display:block;')}>
+              <img src="/assets/logo-medallion.png" alt="Nommar — Beauty &amp; Spa by Margarita · Kamari, Santorini" width={627} height={627} style={css('width:clamp(240px,28vw,330px);height:auto;filter:drop-shadow(0 18px 36px rgba(194,165,107,0.22));')} />
+            </h1>
             <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(22px,3vw,36px);line-height:1.4;color:#3D2F25;max-width:18ch;margin:30px 0 0;")}>&ldquo;{t.tagline}&rdquo;</p>
             <FX as="button" onClick={() => router.push('/book')} style="margin-top:36px;font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:16px 38px;cursor:pointer;border-radius:1px;box-shadow:0 12px 30px -10px rgba(194,165,107,0.6);transition:transform .4s ease;" hover="transform:translateY(-3px);">{t.bookRitual}</FX>
           </Reveal>

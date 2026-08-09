@@ -5,6 +5,7 @@ import SocialHub from '@/components/social/SocialHub';
 // the main site. Not linked from the nav; reachable only by direct URL.
 export const metadata: Metadata = {
   title: 'Nommar — Reviews & Socials',
+  description: 'Leave a review or follow Nommar Beauty & Spa on Instagram and TikTok.',
   robots: { index: false, follow: false },
 };
 

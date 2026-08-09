@@ -3,7 +3,7 @@ import { getBaseUrl } from '@/lib/urls';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = getBaseUrl();
-  const routes = ['', '/services', '/packages', '/about', '/contact', '/book'];
+  const routes = ['', '/services', '/packages', '/hair-removal', '/about', '/faq', '/contact', '/book'];
   return routes.map((r) => ({
     url: `${base}${r}`,
     changeFrequency: 'monthly',

@@ -13,12 +13,13 @@ const NAV = [
   { key: 'hairRemoval', href: '/hair-removal', tkey: 'navHairRemoval' },
   { key: 'packages', href: '/packages', tkey: 'navPackages' },
   { key: 'about', href: '/about', tkey: 'navAbout' },
+  { key: 'faq', href: '/faq', tkey: 'navFAQ' },
   { key: 'contact', href: '/contact', tkey: 'navContact' },
 ];
 
 export default function Nav() {
   const { t, lang, setLang } = useLang();
-  const isMobile = useIsMobile(1280); // wider than the shared 880 default — 6 nav items in Greek (esp. "Η Ιστορία μας") need more room before the links fit on one line without wrapping
+  const isMobile = useIsMobile(1380); // wider than the shared 880 default — 7 nav items in Greek (esp. "Η Ιστορία μας") need more room before the links fit on one line without wrapping
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
