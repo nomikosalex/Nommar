@@ -124,6 +124,37 @@ model Booking {
   @@index([reservationId])
 }
 
+// A Google Business Profile review + its reply workflow. Synced by
+// app/api/cron/reviews-sync, drafted by lib/generate-reply.ts, approved (or
+// edited) and posted by an admin via /admin/reviews — or, if the auto-post
+// setting is on, posted automatically 24h later for eligible reviews (see
+// lib/reviews.ts — ratings of 3 or below NEVER auto-post, no matter what).
+model Review {
+  id             Int       @id @default(autoincrement())
+  googleReviewId String    @unique
+  authorName     String
+  rating         Int // 1-5
+  reviewText     String
+  reviewDate     DateTime
+
+  aiDraftReply String? // Claude-generated draft, set right after sync
+  finalReply   String? // what actually got posted — may differ from aiDraftReply if edited
+
+  // pending | approved | posted | auto_posted | edited
+  // "approved" is reserved for a possible future approve-without-posting-yet
+  // step — the current admin UI's two actions both approve AND post in one
+  // click, going straight from "pending" to "posted"/"edited"/"auto_posted".
+  status String @default("pending")
+
+  postedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([reviewDate])
+}
+
 model AdminUser {
   id           Int      @id @default(autoincrement())
   email        String   @unique

@@ -47,6 +47,7 @@ export default function AdminHeader() {
             {link('/admin/dashboard', locale === 'gr' ? 'Στατιστικά' : 'Dashboard')}
             {link('/admin/calendar', 'Calendar')}
             {link('/admin/schedule', 'Schedule')}
+            {link('/admin/reviews', locale === 'gr' ? 'Κριτικές' : 'Reviews')}
             {link('/admin/services', 'Services')}
           </nav>
         </div>
