@@ -1,7 +1,6 @@
 'use client';
 import { css } from '@/lib/css';
 import { useLang } from '@/lib/lang';
-import Placeholder from '@/components/Placeholder';
 import { Reveal } from '@/components/animations/Reveal';
 
 export default function About() {
@@ -15,7 +14,7 @@ export default function About() {
       <section style={css('max-width:1180px;margin:0 auto;padding:clamp(40px,5vw,72px) clamp(24px,6vw,72px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(380px,100%),1fr));gap:clamp(40px,5vw,80px);align-items:center;')}>
         <Reveal direction="right" style="position:relative;overflow:hidden;box-shadow:0 30px 64px -34px rgba(61,47,37,0.5);">
           <div style={css('aspect-ratio:4/5;')}>
-            <Placeholder label="margarita · portrait" style="width:100%;height:100%;" />
+            <img src="/assets/margarita-portrait.jpg" alt="Margarita, founder of Nommar Beauty &amp; Spa" width={1000} height={1250} style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
           </div>
         </Reveal>
         <Reveal direction="left">
