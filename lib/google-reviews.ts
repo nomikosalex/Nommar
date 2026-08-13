@@ -57,22 +57,30 @@ export async function fetchReviews(): Promise<GoogleReview[]> {
   const accountId = process.env.GOOGLE_BUSINESS_ACCOUNT_ID;
   const locationId = process.env.GOOGLE_BUSINESS_LOCATION_ID;
 
-  // Google My Business API v4 — this is where the reviews resource lives
-  // (list + reply), distinct from the newer Business Information/Performance
-  // APIs, which don't cover reviews. Google has reshuffled the Business
-  // Profile API surface more than once — verify this path against current
-  // Google docs before going live.
-  const url = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!res.ok) throw new Error(`Google reviews fetch failed: ${res.status} ${await res.text()}`);
-  const data = await res.json();
-  const reviews = (data.reviews || []) as Array<{
-    reviewId: string;
-    reviewer?: { displayName?: string };
-    starRating: string;
-    comment?: string;
-    createTime: string;
-  }>;
+  // Google My Business API v4 — confirmed current as of 2026-08-13 (see
+  // REVIEWS-SETUP.md for the full research trail). This is where the reviews
+  // resource lives (list + reply); the newer split Business Profile APIs
+  // (Account Management, Business Information, Notifications, Performance,
+  // etc.) don't cover reviews, and neither does the separate Merchant API
+  // Reviews sub-API (that one is product/Shopping reviews, unrelated).
+  const baseUrl = `https://mybusiness.googleapis.com/v4/accounts/${accountId}/locations/${locationId}/reviews`;
+  type RawReview = { reviewId: string; reviewer?: { displayName?: string }; starRating: string; comment?: string; createTime: string };
+  const reviews: RawReview[] = [];
+
+  // Paginate — the API caps at 50 reviews per page (pageSize), so a location
+  // with more than that needs nextPageToken followed to page 2+, or older
+  // reviews are silently never synced. Capped at 20 pages (1000 reviews) as
+  // a sanity ceiling against an unexpected infinite-pagination response.
+  let pageToken: string | undefined;
+  for (let page = 0; page < 20; page++) {
+    const url = pageToken ? `${baseUrl}?pageToken=${encodeURIComponent(pageToken)}` : baseUrl;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) throw new Error(`Google reviews fetch failed: ${res.status} ${await res.text()}`);
+    const data = await res.json();
+    reviews.push(...((data.reviews || []) as RawReview[]));
+    pageToken = data.nextPageToken;
+    if (!pageToken) break;
+  }
 
   return reviews.map((r) => ({
     googleReviewId: r.reviewId,
