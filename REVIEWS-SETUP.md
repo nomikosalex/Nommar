@@ -56,4 +56,4 @@ When enabled, a review auto-posts its AI draft if **all** of these hold:
 
 **Reviews rated 3 stars or below never auto-post, no matter what** — that rule is enforced directly in `lib/reviews.ts`'s `isAutoPostEligible()`, not just by the query in the cron job, so it holds even if the sweep logic changes later.
 
-The sweep runs as part of `/api/cron/reviews-sync` (registered in `vercel.json`, every 2 hours) — it doesn't have its own separate cron entry, since it's cheap and operates on the same table as the review sync itself.
+The sweep runs as part of `/api/cron/reviews-sync` (registered in `vercel.json`, once daily — Hobby-plan Vercel projects cap cron jobs at once/day, and a more frequent schedule fails the whole deployment) — it doesn't have its own separate cron entry, since it's cheap and operates on the same table as the review sync itself.

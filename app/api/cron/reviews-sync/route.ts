@@ -6,7 +6,9 @@ import { isAutoPostEligible } from '@/lib/reviews';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/cron/reviews-sync — run every 1-2h by Vercel Cron (see vercel.json).
+// GET /api/cron/reviews-sync — run daily by Vercel Cron (see vercel.json).
+// Hobby-plan Vercel projects cap cron jobs at once/day; anything more
+// frequent fails the whole deployment, not just this route.
 // Same auth pattern as /api/cron/reminders.
 //
 // Two jobs in one run, kept together deliberately rather than as separate
