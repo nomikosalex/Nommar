@@ -49,6 +49,7 @@ export default function AdminHeader() {
             {link('/admin/schedule', 'Schedule')}
             {link('/admin/reviews', locale === 'gr' ? 'Κριτικές' : 'Reviews')}
             {link('/admin/services', 'Services')}
+            {link('/admin/gallery', locale === 'gr' ? 'Γκαλερί' : 'Gallery')}
           </nav>
         </div>
         <div style={css('display:flex;align-items:center;gap:14px;')}>

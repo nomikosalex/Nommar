@@ -13,6 +13,7 @@ const NAV = [
   { key: 'hairRemoval', href: '/hair-removal', tkey: 'navHairRemoval' },
   { key: 'packages', href: '/packages', tkey: 'navPackages' },
   { key: 'about', href: '/about', tkey: 'navAbout' },
+  { key: 'gallery', href: '/gallery', tkey: 'navGallery' },
   { key: 'faq', href: '/faq', tkey: 'navFAQ' },
   { key: 'contact', href: '/contact', tkey: 'navContact' },
 ];

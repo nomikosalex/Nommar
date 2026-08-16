@@ -161,3 +161,18 @@ model AdminUser {
   passwordHash String
   createdAt    DateTime @default(now())
 }
+
+// A photo in the public /gallery grid, managed from /admin/gallery. Rows are
+// created directly by the upload endpoint (no separate "create" step — see
+// app/api/admin/upload) and edited/reordered/deactivated via batch save.
+model GalleryImage {
+  id           Int      @id @default(autoincrement())
+  imageUrl     String
+  captionEn    String?
+  captionGr    String?
+  displayOrder Int      @default(0)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([active, displayOrder])
+}
