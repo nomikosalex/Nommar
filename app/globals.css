@@ -63,6 +63,10 @@ summary {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+@keyframes kenBurns {
+  from { transform: scale(1); }
+  to { transform: scale(1.06); }
+}
 
 /* Skip-to-content link: off-screen until focused by keyboard. */
 .skip-link {

@@ -8,6 +8,7 @@ import Placeholder from '@/components/Placeholder';
 import Testimonials from '@/components/Testimonials';
 import { Reveal } from '@/components/animations/Reveal';
 import { Parallax } from '@/components/animations/Parallax';
+import { useReducedMotion } from '@/lib/useReducedMotion';
 import { localizedHomeCats } from '@/lib/data';
 
 export default function Home() {
@@ -15,6 +16,7 @@ export default function Home() {
   const homeCats = localizedHomeCats(lang);
   const router = useRouter();
   const heroStyle = CONFIG.heroStyle;
+  const reduced = useReducedMotion();
 
   return (
     <div>
@@ -67,7 +69,7 @@ export default function Home() {
             <FX as="button" onClick={() => router.push('/book')} style="margin-top:36px;font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:16px 38px;cursor:pointer;border-radius:1px;box-shadow:0 12px 30px -10px rgba(194,165,107,0.6);transition:transform .4s ease;" hover="transform:translateY(-3px);">{t.bookRitual}</FX>
           </Reveal>
           <Parallax style="height:clamp(280px,46vh,520px);">
-            <Placeholder label="santorini calm · linen & light" style="width:100%;height:100%;" />
+            <img src="/assets/santorini-calm-linen.jpg" alt="Linen, olive branch and spa essentials on a sunlit Santorini terrace" width={1800} height={740} style={css('width:100%;height:100%;object-fit:cover;display:block;' + (reduced ? '' : 'animation:kenBurns 20s ease-in-out infinite alternate;'))} />
           </Parallax>
         </section>
       )}
