@@ -9,6 +9,7 @@ import Testimonials from '@/components/Testimonials';
 import { Reveal } from '@/components/animations/Reveal';
 import { Parallax } from '@/components/animations/Parallax';
 import { useReducedMotion } from '@/lib/useReducedMotion';
+import { useIsMobile } from '@/lib/useIsMobile';
 import { localizedHomeCats } from '@/lib/data';
 
 export default function Home() {
@@ -17,6 +18,7 @@ export default function Home() {
   const router = useRouter();
   const heroStyle = CONFIG.heroStyle;
   const reduced = useReducedMotion();
+  const isMobile = useIsMobile();
 
   return (
     <div>
@@ -131,10 +133,18 @@ export default function Home() {
 
       {/* MARGARITA TEASER */}
       <section style={css('background:#F3EADA;')}>
-        <Reveal style="max-width:880px;margin:0 auto;padding:clamp(64px,8vw,120px) clamp(24px,6vw,40px);text-align:center;">
-          <div style={css("font-family:var(--font-pinyon),cursive;font-size:clamp(40px,6vw,64px);color:#C2A56B;line-height:1;margin-bottom:18px;")}>by Margarita</div>
-          <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(21px,2.6vw,30px);line-height:1.6;color:#3D2F25;max-width:30ch;margin:0 auto 30px;")}>&ldquo;{t.margaritaQuote}&rdquo;</p>
-          <FX as="button" onClick={() => router.push('/about')} style="font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:transparent;border:1px solid #C2A56B;padding:14px 30px;cursor:pointer;border-radius:1px;transition:background .35s ease,color .35s ease;" hover="background:#C2A56B;color:#FAF5EC;">{t.ourStory}</FX>
+        <Reveal>
+          <FX
+            as="button"
+            onClick={() => router.push('/about')}
+            aria-label={t.ourStory}
+            style="display:block;width:100%;padding:0;border:none;background:none;cursor:pointer;transition:transform .5s ease;"
+            hover="transform:scale(1.015);"
+          >
+            <Parallax style={(isMobile ? 'height:clamp(360px,62vh,520px);' : 'height:clamp(280px,46vh,520px);')}>
+              <img src="/assets/our-story-desk.jpg" alt="A framed quote from Margarita on the Nommar reception desk, styled with lavender, candles and linen" width={1600} height={1024} style={css('width:100%;height:100%;object-fit:cover;display:block;' + (reduced ? '' : 'animation:kenBurns 20s ease-in-out infinite alternate;'))} />
+            </Parallax>
+          </FX>
         </Reveal>
       </section>
 
