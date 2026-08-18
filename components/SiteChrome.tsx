@@ -12,6 +12,7 @@ import Nav from '@/components/Nav';
 import Footer from '@/components/Footer';
 import FloatingBook from '@/components/FloatingBook';
 import AttributionCapture from '@/components/AttributionCapture';
+import CursorGlow from '@/components/layout/CursorGlow';
 
 // Client shell: language context + smooth scroll + persistent chrome around pages.
 export default function SiteChrome({ children }: { children: ReactNode }) {
@@ -41,6 +42,7 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
           style={css("font-family:var(--font-jost),sans-serif;background:#FAF5EC;color:#3D2F25;min-height:100dvh;overflow-x:hidden;font-weight:300;")}
         >
           <AttributionCapture />
+          <CursorGlow />
           <a href="#main" className="skip-link">Skip to content</a>
           <OpeningBanner />
           <AnnouncementBanner />
