@@ -5,7 +5,7 @@ import { useLang } from '@/lib/lang';
 
 // Prominent, non-dismissible announcement at the very top of the site.
 // Set SHOW to false once the spa has opened.
-const SHOW = true;
+const SHOW = false;
 
 export default function OpeningBanner() {
   const { t } = useLang();
