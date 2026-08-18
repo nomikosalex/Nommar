@@ -41,7 +41,7 @@ export default function Home() {
       {/* HERO: split */}
       {heroStyle === 'split' && (
         <section style={css('display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));min-height:86dvh;')}>
-          <div style={css('display:flex;flex-direction:column;justify-content:center;padding:clamp(48px,7vw,110px) clamp(24px,6vw,90px);')}>
+          <Reveal style="display:flex;flex-direction:column;justify-content:center;padding:clamp(48px,7vw,110px) clamp(24px,6vw,90px);">
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:#C2A56B;margin-bottom:24px;")}>{t.heroLocation}</div>
             <h1 style={css("margin:0;font-family:var(--font-cinzel),serif;font-size:clamp(44px,7vw,86px);font-weight:600;letter-spacing:0.08em;line-height:1;background:linear-gradient(180deg,#BFA15F,#E6CF95 50%,#BFA15F);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;")}>NOMMAR</h1>
             <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.36em;text-transform:uppercase;color:#A8967C;margin-top:14px;")}>Beauty &amp; Spa</div>
@@ -50,7 +50,7 @@ export default function Home() {
             <div>
               <FX as="button" onClick={() => router.push('/book')} style="margin-top:38px;font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;color:#3D2F25;font-weight:500;background:linear-gradient(135deg,#E6CF95,#C2A56B);border:none;padding:16px 38px;cursor:pointer;border-radius:1px;box-shadow:0 12px 30px -10px rgba(194,165,107,0.6);transition:transform .4s ease;" hover="transform:translateY(-3px);">{t.bookRitual}</FX>
             </div>
-          </div>
+          </Reveal>
           <Parallax style="min-height:46vh;">
             <Placeholder label="japanese head spa · water & light" style="width:100%;height:100%;" />
           </Parallax>

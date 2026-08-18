@@ -24,11 +24,11 @@ export default function Packages() {
 
   return (
     <div style={css('background:#F3EADA;')}>
-      <section style={css('text-align:center;padding:clamp(64px,8vw,112px) clamp(24px,6vw,40px) clamp(24px,3vw,44px);')}>
+      <Reveal style="text-align:center;padding:clamp(64px,8vw,112px) clamp(24px,6vw,40px) clamp(24px,3vw,44px);">
         <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>{t.packagesEyebrow}</div>
         <h1 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(30px,4.6vw,54px);letter-spacing:0.04em;color:#3D2F25;margin:0;line-height:1.15;")}>{t.packagesTitle}</h1>
         <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(18px,2vw,24px);color:#8A7965;margin:18px auto 0;max-width:42ch;")}>{t.packagesSub}</p>
-      </section>
+      </Reveal>
       <section style={css('max-width:1180px;margin:0 auto;padding:0 clamp(24px,6vw,72px) clamp(64px,8vw,120px);display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:clamp(24px,3vw,40px);')}>
         {packages.map((pkg, i) => (
           <Reveal key={pkg.n} delay={i * 0.06} style="display:flex;">

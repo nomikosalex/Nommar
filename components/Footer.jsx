@@ -4,6 +4,7 @@ import { css } from '@/lib/css';
 import { FX } from '@/lib/fx';
 import { useLang } from '@/lib/lang';
 import { CONTACT, YEAR } from '@/lib/data';
+import { Reveal } from '@/components/animations/Reveal';
 
 const telHref = (p) => 'tel:' + p.replace(/[^\d+]/g, '');
 
@@ -31,7 +32,7 @@ export default function Footer() {
           </div>
           <div style={css("font-family:var(--font-jost),sans-serif;font-size:10px;letter-spacing:0.36em;text-transform:uppercase;color:#A8967C;margin-bottom:6px;")}>Beauty &amp; Spa</div>
           <div style={css("font-family:var(--font-pinyon),cursive;font-size:28px;color:#C2A56B;margin-bottom:18px;")}>by Margarita</div>
-          <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:17px;line-height:1.5;color:#C9B89B;max-width:30ch;margin:0;")}>{t.tagline}</p>
+          <Reveal><p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:17px;line-height:1.5;color:#C9B89B;max-width:30ch;margin:0;")}>{t.tagline}</p></Reveal>
         </div>
         <div>
           <div style={css("font-family:var(--font-jost),sans-serif;font-size:11px;letter-spacing:0.24em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>{t.footerExplore}</div>

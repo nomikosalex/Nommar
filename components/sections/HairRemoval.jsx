@@ -58,11 +58,11 @@ export default function HairRemoval() {
 
   return (
     <div>
-      <section style={css('text-align:center;padding:clamp(64px,8vw,112px) clamp(24px,6vw,40px) clamp(20px,3vw,36px);')}>
+      <Reveal style="text-align:center;padding:clamp(64px,8vw,112px) clamp(24px,6vw,40px) clamp(20px,3vw,36px);">
         <div style={css("font-family:var(--font-jost),sans-serif;font-size:12px;letter-spacing:0.34em;text-transform:uppercase;color:#C2A56B;margin-bottom:18px;")}>{t.hairRemovalEyebrow}</div>
         <h1 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:clamp(32px,5vw,58px);letter-spacing:0.05em;color:#3D2F25;margin:0;")}>{t.navHairRemoval}</h1>
         <p style={css("font-family:var(--font-cormorant),serif;font-style:italic;font-size:clamp(18px,2vw,24px);color:#8A7965;margin:18px auto 0;max-width:42ch;")}>{t.hairRemovalSub}</p>
-      </section>
+      </Reveal>
 
       <div style={css('max-width:720px;margin:0 auto;padding:0 clamp(20px,5vw,40px);')}>
         <Section title={t.sectionFace} items={face} lang={lang} delay={0.05} />
