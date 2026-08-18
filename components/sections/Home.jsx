@@ -116,7 +116,7 @@ export default function Home() {
             <Reveal key={cat.name} delay={i * 0.08}>
               <FX as="button" onClick={() => router.push('/services')} style="display:block;width:100%;text-align:left;background:#FFFDF8;border:1px solid rgba(194,165,107,0.25);cursor:pointer;padding:0;overflow:hidden;box-shadow:0 18px 40px -30px rgba(61,47,37,0.5);transition:transform .4s ease,box-shadow .4s ease,border-color .4s ease;" hover="transform:translateY(-6px);box-shadow:0 30px 56px -30px rgba(61,47,37,0.45);border-color:rgba(194,165,107,0.55);">
                 <div style={css('height:200px;')}>
-                  <Placeholder label={cat.img} style="width:100%;height:100%;" />
+                  <img src={cat.image} alt={cat.name} loading="lazy" style={css('width:100%;height:100%;object-fit:cover;display:block;')} />
                 </div>
                 <div style={css('padding:24px 24px 28px;')}>
                   <h3 style={css("font-family:var(--font-cinzel),serif;font-weight:500;font-size:21px;letter-spacing:0.04em;color:#3D2F25;margin:0 0 8px;")}>{cat.name}</h3>
